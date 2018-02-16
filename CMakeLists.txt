@@ -8,7 +8,7 @@ project(chibi18_control)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  roomba_500driver_mejji
+  roomba_500driver_meiji
   roscpp
   rospy
   std_msgs
@@ -107,7 +107,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
    INCLUDE_DIRS include
    LIBRARIES chibi18_control
-   CATKIN_DEPENDS roscpp rospy std_msgs roomba_500driver_meiji
+#  CATKIN_DEPENDS roscpp rospy std_msgs roomba_500driver_meiji
 #  DEPENDS system_lib
 )
 
