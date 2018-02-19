@@ -61,8 +61,13 @@ int main(int argc, char** argv){
       vx = 1.0;
     }
     roomba_velocity.cntl.linear.x = vx; 
-
-    float omega_z = 0.5 * atan2((_target.y - roomba_position.pose.pose.position.y), (_target.x - roomba_position.pose.pose.position.x));//0.5は適当
+    //クォータニオンからyawを計算する
+    double r, p, y;
+    tf::Quaternion quat(roomba_position.pose.pose.orientation.x, roomba_position.pose.pose.orientation.y, roomba_position.pose.pose.orientation.z, roomba_position.pose.pose.orientation.w);
+    tf::Matrix3x3(quat).getRPY(r, p, y);
+    std::cout << y*180/M_PI << std::endl;    
+    std::cout << _target.theta << std::endl;
+    float omega_z = 0.02 * atan2((_target.y - roomba_position.pose.pose.position.y), (_target.x - roomba_position.pose.pose.position.x)) + 0.02 * (_target.theta - y / M_PI * 180);//係数は適当
   roomba_velocity.mode = roomba_500driver_meiji::RoombaCtrl::DRIVE_DIRECT;
     if(omega_z < -1.0){
       omega_z = -1.0;
