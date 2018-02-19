@@ -54,7 +54,7 @@ int main(int argc, char** argv){
       boost::mutex::scoped_lock(target_mutex);
       _target = target;
     } 
-    float vx = 0.5 * sqrt(pow(_target.x - roomba_position.pose.pose.position.x, 2) + pow(_target.y - roomba_position.pose.pose.position.y, 2));//0.5は適当  
+    float vx = 0.3 * sqrt(pow(_target.x - roomba_position.pose.pose.position.x, 2) + pow(_target.y - roomba_position.pose.pose.position.y, 2));//0.5は適当  
     if(vx < -1.0){
       vx = -1.0;
     }else if(vx > 1.0){
