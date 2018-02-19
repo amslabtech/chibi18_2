@@ -39,10 +39,11 @@ int main(int argc, char** argv){
   ros::Subscriber target_sub = nh.subscribe("/chibi18/target", 100, chibi18_target_callback);
 
   ros::Rate loop_rate(10);
-
   while(ros::ok()){
     nav_msgs::Odometry roomba_position;//roomba_odometryのローカル変数 
     roomba_500driver_meiji::RoombaCtrl roomba_velocity;
+    roomba_velocity.mode = roomba_500driver_meiji::RoombaCtrl::DRIVE_DIRECT;
+
     //mutexロック　去年のと書き方が違う
     {
       boost::mutex::scoped_lock(roomba_odometry_mutex);
