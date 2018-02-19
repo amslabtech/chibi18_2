@@ -35,11 +35,12 @@ int main(int argc, char** argv)
       boost::mutex::scoped_lock(laser_mutex);
       _data = data;
     } 
-    for(int i=0;i<(sizeof(_data.ranges)/sizeof(_data.ranges[0]));i++){
-      std::cout << _data.ranges[i] << std::endl;
+    if(!_data.ranges.empty()){
+      for(int i=0;i<(sizeof(_data.ranges)/sizeof(_data.ranges[0]));i++){
+        std::cout << _data.ranges[i] << std::endl;
+      }
+      std::cout << std::endl;
     }
-    std::cout << std::endl;
-
 
     ros::spinOnce();
     loop_rate.sleep();
