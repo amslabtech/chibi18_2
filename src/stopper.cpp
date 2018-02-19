@@ -4,17 +4,13 @@
 #include <std_msgs/Bool.h>
 #include <boost/thread.hpp>
 
-boost::mutex laser_mutex;
 sensor_msgs::LaserScan data;
 
 
 void laser_callback(const sensor_msgs::LaserScanConstPtr &msg)
 {
-  boost::mutex::scoped_lock(laser_mutex);
   data = *msg;
 }
-
-
 
 
 int main(int argc, char** argv)
@@ -31,17 +27,7 @@ int main(int argc, char** argv)
   sensor_msgs::LaserScan _data;
   
   while(ros::ok()){
-    {
-      boost::mutex::scoped_lock(laser_mutex);
-      _data = data;
-    } 
-    if(!_data.ranges.empty()){
-      for(int i=0;i<(sizeof(_data.ranges)/sizeof(_data.ranges[0]));i++){
-        std::cout << _data.ranges[i] << std::endl;
-      }
-      std::cout << std::endl;
-    }
-
+    std::cout << data << std::endl;
     ros::spinOnce();
     loop_rate.sleep();
   }
