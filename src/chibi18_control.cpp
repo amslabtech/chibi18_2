@@ -61,7 +61,7 @@ int main(int argc, char** argv){
     }
     roomba_velocity.cntl.linear.x = vx; 
 
-    float omega_z = 0.5 * atan2((_target.x - roomba_position.pose.pose.position.x), (_target.y - roomba_position.pose.pose.position.y));//0.5は適当
+    float omega_z = 0.5 * atan2((_target.y - roomba_position.pose.pose.position.y), (_target.x - roomba_position.pose.pose.position.x));//0.5は適当
     if(omega_z < -1.0){
       omega_z = -1.0;
     }else if(omega_z > 1.0){
