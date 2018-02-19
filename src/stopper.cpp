@@ -24,10 +24,19 @@ int main(int argc, char** argv)
 
 
   ros::Rate loop_rate(10);
-  sensor_msgs::LaserScan _data;
   
   while(ros::ok()){
-    std::cout << data << std::endl;
+    //std::cout << data << std::endl;
+    std_msgs::Bool state;
+    if(!data.ranges.empty()){
+      std::cout << data << std::endl;
+      if(data.ranges[360] < 0.5){
+        state.data = false;
+      }else{
+        state.data = true;
+      }
+      stop_pub.publish(state);
+    }
     ros::spinOnce();
     loop_rate.sleep();
   }
