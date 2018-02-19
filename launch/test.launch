@@ -2,4 +2,5 @@
   <node pkg="chibi18_control" name="chibi18_control" type="chibi18_control"/>
   <node pkg="chibi18_control" name="set_target" type="set_target"/>
   <node pkg="roomba_500driver_meiji" name="main500" type="main500"/>
+  <node pkg="chibi18_control" name="stopper" type="stopper"/>
 </launch>

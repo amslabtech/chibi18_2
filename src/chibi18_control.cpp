@@ -10,11 +10,13 @@
 #include <std_msgs/String.h>
 #include <geometry_msgs/Pose2D.h>
 #include <geometry_msgs/Twist.h>
+#include <std_msgs/Bool.h>
 
 nav_msgs::Odometry roomba_odometry;//グローバル変数
 boost::mutex roomba_odometry_mutex;//mutexオブジェクト
 geometry_msgs::Pose2D target;//目的地(/world)
 boost::mutex target_mutex;//mutexオブジェクトその２
+std_msgs::Bool wall_state;
 
 void roomba_odometry_callback(const nav_msgs::OdometryConstPtr& msg)
 {
@@ -28,6 +30,11 @@ void chibi18_target_callback(const geometry_msgs::Pose2DConstPtr& msg)
   target = *msg;
 }
 
+void chibi18_stop_callback(const std_msgs::BoolConstPtr& msg)
+{
+  wall_state = *msg;
+}
+
 int main(int argc, char** argv){
   ros::init(argc, argv, "chibi18_control");
   ros::NodeHandle nh;
@@ -37,6 +44,8 @@ int main(int argc, char** argv){
   ros::Subscriber odometry_sub = nh.subscribe("/roomba/odometry", 100, roomba_odometry_callback);
 
   ros::Subscriber target_sub = nh.subscribe("/chibi18/target", 100, chibi18_target_callback);
+
+  ros::Subscriber stop_sub = nh.subscribe("/chibi18/stop", 100, chibi18_stop_callback);
 
   ros::Rate loop_rate(10);
   while(ros::ok()){
@@ -76,8 +85,13 @@ int main(int argc, char** argv){
     }
     roomba_velocity.cntl.angular.z = omega_z;
 
-    controller_pub.publish(roomba_velocity);
-
+    if(wall_state.data){
+      controller_pub.publish(roomba_velocity);
+    }else{
+      roomba_velocity.cntl.linear.x = 0;
+      roomba_velocity.cntl.angular.z = 0;
+      controller_pub.publish(roomba_velocity);
+    }
     ros::spinOnce();
     loop_rate.sleep();
   }

@@ -13,9 +13,9 @@ int main(int argc, char** argv)
   ros::Rate loop_rate(10);
 
   geometry_msgs::Pose2D target;
-  target.x = 0.0;
+  target.x = 3.0;
   target.y = 0.0;
-  target.theta = 90.0;
+  target.theta = 0.0;
 
   while(ros::ok()){
     target_pub.publish(target);
