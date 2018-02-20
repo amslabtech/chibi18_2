@@ -32,7 +32,7 @@ int main(int argc, char** argv)
         }
       } 
       std::cout << min_range << "[m]" << std::endl;
-      if(min_range < 0.5){
+      if(min_range < 0.8){
         if(index<360){
           velocity.linear.x = 0;
           velocity.angular.z = 0.5;
@@ -41,7 +41,7 @@ int main(int argc, char** argv)
           velocity.angular.z = -0.5;
         }
       }else{
-        velocity.linear.x = 0.8;
+        velocity.linear.x = 0.5;
         velocity.angular.z = 0;
       }
       velocity_pub.publish(velocity);

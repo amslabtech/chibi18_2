@@ -1,0 +1,9 @@
+<launch>
+  <node pkg="chibi18_control" name="runner" type="runner" />
+  <node pkg="chibi18_control" name="changer" type="changer" />
+
+  <node pkg="roomba_500driver_meiji" name="main500" type="main500" />
+
+  <node pkg="hokuyo_node" name="hokuyo_node" type="hokuyo_node" />
+
+</launch>
