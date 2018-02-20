@@ -74,7 +74,6 @@ int main(int argc, char** argv){
     std::cout << theta_error << std::endl;
     if(!(fabs(theta_error)<0.1)){//目標地点方向との誤差が0.1以内になるように 
       float omega_z = 0.8 * theta_error/* + 0.02 * (_target.theta - y / M_PI * 180)*/;//係数は適当//旋回は分ける
-  roomba_velocity.mode = roomba_500driver_meiji::RoombaCtrl::DRIVE_DIRECT;
       if(omega_z < -1.0){
         omega_z = -1.0;
       }else if(omega_z > 1.0){
