@@ -16,7 +16,6 @@ int main(int argc, char** argv)
   target.x = 0.5;
   target.y = 0.5;
   target.theta = 0.0;
-
   while(ros::ok()){
     target_pub.publish(target);
     

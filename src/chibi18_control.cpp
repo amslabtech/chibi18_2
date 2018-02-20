@@ -82,7 +82,8 @@ int main(int argc, char** argv){
       roomba_velocity.cntl.linear.x = 0;
       roomba_velocity.cntl.angular.z = omega_z;
     }else{
-      float vx = 0.3 * sqrt(pow(_target.x - roomba_position.pose.pose.position.x, 2) + pow(_target.y - roomba_position.pose.pose.position.y, 2));//0.5は適当  
+      float position_error = sqrt(pow(_target.x - roomba_position.pose.pose.position.x, 2) + pow(_target.y - roomba_position.pose.pose.position.y, 2));
+      float vx = 0.3 * position_error;//0.5は適当  
       if(vx < -1.0){
         vx = -1.0;
       }else if(vx > 1.0){
