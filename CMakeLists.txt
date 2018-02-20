@@ -138,6 +138,7 @@ include_directories(
 add_executable(chibi18_control src/chibi18_control.cpp)
 add_executable(set_target src/set_target.cpp)
 add_executable(stopper src/stopper.cpp)
+add_executable(runner src/runner.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -157,6 +158,9 @@ add_executable(stopper src/stopper.cpp)
    ${catkin_LIBRARIES}
  )
  target_link_libraries(stopper
+   ${catkin_LIBRARIES}
+ )
+ target_link_libraries(runner
    ${catkin_LIBRARIES}
  )
 #############
