@@ -63,28 +63,35 @@ int main(int argc, char** argv){
       boost::mutex::scoped_lock(target_mutex);
       _target = target;
     } 
-    float vx = 0.3 * sqrt(pow(_target.x - roomba_position.pose.pose.position.x, 2) + pow(_target.y - roomba_position.pose.pose.position.y, 2));//0.5は適当  
-    if(vx < -1.0){
-      vx = -1.0;
-    }else if(vx > 1.0){
-      vx = 1.0;
-    }
-    roomba_velocity.cntl.linear.x = vx; 
     //クォータニオンからyawを計算する
     double r, p, y;
     tf::Quaternion quat(roomba_position.pose.pose.orientation.x, roomba_position.pose.pose.orientation.y, roomba_position.pose.pose.orientation.z, roomba_position.pose.pose.orientation.w);
     tf::Matrix3x3(quat).getRPY(r, p, y);
-    std::cout << y*180/M_PI << std::endl;    
-    std::cout << _target.theta << std::endl;
-    float omega_z = 0.02 * atan2((_target.y - roomba_position.pose.pose.position.y), (_target.x - roomba_position.pose.pose.position.x)) + 0.02 * (_target.theta - y / M_PI * 180);//係数は適当
+    //std::cout << y*180/M_PI << std::endl;    
+    //std::cout << _target.theta << std::endl;
+    float target_angle = atan2((_target.y - roomba_position.pose.pose.position.y), (_target.x - roomba_position.pose.pose.position.x));
+    float theta_error = target_angle - y;
+    std::cout << theta_error << std::endl;
+    if(!(fabs(theta_error)<0.1)){//目標地点方向との誤差が0.1以内になるように 
+      float omega_z = 0.8 * theta_error/* + 0.02 * (_target.theta - y / M_PI * 180)*/;//係数は適当//旋回は分ける
   roomba_velocity.mode = roomba_500driver_meiji::RoombaCtrl::DRIVE_DIRECT;
-    if(omega_z < -1.0){
-      omega_z = -1.0;
-    }else if(omega_z > 1.0){
-      omega_z = 1.0;
+      if(omega_z < -1.0){
+        omega_z = -1.0;
+      }else if(omega_z > 1.0){
+        omega_z = 1.0;
+      }
+      roomba_velocity.cntl.linear.x = 0;
+      roomba_velocity.cntl.angular.z = omega_z;
+    }else{
+      float vx = 0.3 * sqrt(pow(_target.x - roomba_position.pose.pose.position.x, 2) + pow(_target.y - roomba_position.pose.pose.position.y, 2));//0.5は適当  
+      if(vx < -1.0){
+        vx = -1.0;
+      }else if(vx > 1.0){
+        vx = 1.0;
+      }
+      roomba_velocity.cntl.linear.x = vx; 
+      roomba_velocity.cntl.angular.z = 0;
     }
-    roomba_velocity.cntl.angular.z = omega_z;
-
     if(wall_state.data){
       controller_pub.publish(roomba_velocity);
     }else{

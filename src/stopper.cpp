@@ -36,6 +36,9 @@ int main(int argc, char** argv)
         state.data = true;
       }
       stop_pub.publish(state);
+    }else{
+      state.data = true;
+      stop_pub.publish(state);
     }
     ros::spinOnce();
     loop_rate.sleep();

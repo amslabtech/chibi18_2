@@ -13,8 +13,8 @@ int main(int argc, char** argv)
   ros::Rate loop_rate(10);
 
   geometry_msgs::Pose2D target;
-  target.x = 3.0;
-  target.y = 0.0;
+  target.x = 0.5;
+  target.y = 0.5;
   target.theta = 0.0;
 
   while(ros::ok()){
