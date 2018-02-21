@@ -60,6 +60,10 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "dwa_escape");
     ros::NodeHandle nh;
+    ros::NodeHandle local_nh;
+
+    float distance;
+    local_nh.getParam("DISTANCE", distance);
 
     ros::Subscriber odometry_sub = nh.subscribe("/roomba/odometry", 100, odometry_callback);
 
@@ -68,7 +72,7 @@ int main(int argc, char** argv)
     ros::Publisher velocity_pub = nh.advertise<geometry_msgs::Twist>("/chibi18/velocity", 100);
 
     //ゴールの座標設定
-    goal.x = 3.0;
+    goal.x = distance;
     goal.y = 0.0;
 
     ros::Rate loop_rate(10);
