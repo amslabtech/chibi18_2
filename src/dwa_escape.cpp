@@ -6,17 +6,17 @@
 #include <tf/transform_broadcaster.h>
 
 //物理量に修正すること
-const float MAX_VELOCITY = 1.0;
+const float MAX_VELOCITY = 0.45;
 const float MAX_ANGULAR_VELOCITY = 1.0;
-const float MAX_ACCELERATION = 0.3;
-const float MAX_ANGULAR_ACCELERATION = 0.3;
+const float MAX_ACCELERATION = 1.5;
+const float MAX_ANGULAR_ACCELERATION = 20.0;
 const float VELOCITY_RESOLUTION = 0.05;
 const float ANGULAR_VELOCITY_RESOLUTION = 0.05;
 const float INTERVAL = 0.100;
 
 //評価関数の係数
 const float ALPHA = 0.1;
-const float BETA = 0;
+const float BETA = 0.2;
 const float GAMMA = 0.1;
 
 //DynamicWindowの辺
@@ -48,7 +48,7 @@ void odometry_callback(const nav_msgs::OdometryConstPtr& msg)
   previous_odometry = current_odometry;
   current_odometry = *msg;
   velocity_odometry.linear.x = sqrt(pow(current_odometry.pose.pose.position.x-previous_odometry.pose.pose.position.x, 2) + pow(current_odometry.pose.pose.position.y-previous_odometry.pose.pose.position.y, 2))/INTERVAL;
-  velocity_odometry.angular.z = (get_yaw(current_odometry.pose.pose.orientation)-get_yaw(current_odometry.pose.pose.orientation))/INTERVAL;
+  velocity_odometry.angular.z = (get_yaw(current_odometry.pose.pose.orientation)-get_yaw(previous_odometry.pose.pose.orientation))/INTERVAL;
 }
 
 void laser_callback(const sensor_msgs::LaserScanConstPtr& msg)
@@ -69,7 +69,7 @@ int main(int argc, char** argv)
 
     //ゴールの座標設定
     goal.x = 3.0;
-    goal.y = 1.0;
+    goal.y = 0.0;
 
     ros::Rate loop_rate(10);
 
@@ -78,7 +78,6 @@ int main(int argc, char** argv)
     while(ros::ok()){
       evaluate(velocity);
       velocity_pub.publish(velocity);
-
       ros::spinOnce();
       loop_rate.sleep();
     }
@@ -95,9 +94,9 @@ void evaluate(geometry_msgs::Twist& velocity)
   for(float v = 0;v < window_up/VELOCITY_RESOLUTION;v++){
     for(float o = 0;o < (window_right-window_left)/ANGULAR_VELOCITY_RESOLUTION;o++){
       e[v][o] = ALPHA * calcurate_heading(window_left+o*ANGULAR_VELOCITY_RESOLUTION, get_yaw(current_odometry.pose.pose.orientation), current_odometry.pose.pose.position) + BETA * calcurate_distance(current_odometry.pose.pose.position, VELOCITY_RESOLUTION*v) + GAMMA * calcurate_velocity(VELOCITY_RESOLUTION*v);
-      std::cout << e[v][o] << " ";
+      //std::cout << e[v][o] << " ";
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
   }
   int j = 0;
   int k = 0;
@@ -111,10 +110,19 @@ void evaluate(geometry_msgs::Twist& velocity)
       }
     }
   }
-  velocity.linear.x = j * VELOCITY_RESOLUTION;
-  velocity.angular.z = window_left + k * ANGULAR_VELOCITY_RESOLUTION;
-  std::cout << window_left << " " << ANGULAR_VELOCITY_RESOLUTION << std::endl;
-  std::cout << velocity.angular.z << std::endl;
+  velocity.linear.x = j * VELOCITY_RESOLUTION / MAX_VELOCITY * 0.5;
+  if(sqrt(pow(goal.x - current_odometry.pose.pose.position.x, 2) + pow(goal.y-current_odometry.pose.pose.position.y, 2)) < 0.5){
+    velocity.linear.x *= sqrt(pow(goal.x - current_odometry.pose.pose.position.x, 2) + pow(goal.y-current_odometry.pose.pose.position.y, 2));
+  }
+  velocity.angular.z = (window_left + k * ANGULAR_VELOCITY_RESOLUTION) / MAX_ANGULAR_VELOCITY * 0.5;
+  if(sqrt(pow(goal.x - current_odometry.pose.pose.position.x, 2) + pow(goal.y-current_odometry.pose.pose.position.y, 2)) < 0.01){
+    velocity.angular.z *= sqrt(pow(goal.x - current_odometry.pose.pose.position.x, 2) + pow(goal.y-current_odometry.pose.pose.position.y, 2));
+  }
+  //std::cout << velocity_odometry << std::endl;
+  std::cout << current_odometry.pose.pose << std::endl;
+  std::cout << velocity.linear.x << " " << velocity.angular.z << std::endl;
+  //std::cout << window_left << " " << ANGULAR_VELOCITY_RESOLUTION << std::endl;
+  //std::cout << velocity.angular.z << std::endl;
   std::cout << j << std::endl;
   std::cout << k << std::endl;
   std::cout << "max:" << max << std::endl;
@@ -124,6 +132,7 @@ void evaluate(geometry_msgs::Twist& velocity)
 float calcurate_heading(float omega, float angle, geometry_msgs::Point point)
 {
   angle = 0;//TEST DATA
+  angle = get_yaw(current_odometry.pose.pose.orientation);
   float val = 180 - fabs(atan2((goal.y-point.y), (goal.x-point.x)) - (angle + omega * INTERVAL)) / M_PI * 180;
   return val;
 }

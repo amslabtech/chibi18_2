@@ -92,7 +92,7 @@ int main(int argc, char** argv){
         state.data = false;
       }
       arrived_pub.publish(state);
-      float vx = 0.3 * position_error;//0.5は適当  
+      float vx = 0.4 * position_error;//0.5は適当  
       if(vx < -1.0){
         vx = -1.0;
       }else if(vx > 1.0){

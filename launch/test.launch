@@ -3,7 +3,7 @@
 
   <arg name="distance" type="double" default="3.0"/>
   <node pkg="chibi18_control" name="set_target" type="set_target">
-    <param name="DISTANCE" type="double" value="0.5"/>
+    <param name="DISTANCE" type="double" value="3.0"/>
   </node>
 
   <node pkg="chibi18_control" name="stopper" type="stopper"/>
