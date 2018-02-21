@@ -35,7 +35,7 @@ sensor_msgs::LaserScan laser_data;
 
 void evaluate(geometry_msgs::Twist&);
 float calcurate_heading(float, float, geometry_msgs::Point);
-float calcurate_distance(geometry_msgs::Point, float);
+float calcurate_distance(geometry_msgs::Point, float, float);
 float calcurate_velocity(float);
 void calcurate_dynamic_window(void);
 
@@ -98,7 +98,7 @@ void evaluate(geometry_msgs::Twist& velocity)
   }
   for(float v = 0;v < (window_up-window_down)/VELOCITY_RESOLUTION;v++){
     for(float o = 0;o < (window_right-window_left)/ANGULAR_VELOCITY_RESOLUTION;o++){
-      e[v][o] = ALPHA * calcurate_heading(window_left+o*ANGULAR_VELOCITY_RESOLUTION, get_yaw(current_odometry.pose.pose.orientation), current_odometry.pose.pose.position) + BETA * calcurate_distance(current_odometry.pose.pose.position, VELOCITY_RESOLUTION*v) + GAMMA * calcurate_velocity(VELOCITY_RESOLUTION*v);
+      e[v][o] = ALPHA * calcurate_heading(window_left+o*ANGULAR_VELOCITY_RESOLUTION, get_yaw(current_odometry.pose.pose.orientation), current_odometry.pose.pose.position) + BETA * calcurate_distance(current_odometry.pose.pose.position, VELOCITY_RESOLUTION*v, ANGULAR_VELOCITY_RESOLUTION*o) + GAMMA * calcurate_velocity(VELOCITY_RESOLUTION*v);
       //std::cout << e[v][o] << " ";
     }
     //std::cout << std::endl;
@@ -142,18 +142,26 @@ float calcurate_heading(float omega, float angle, geometry_msgs::Point point)
   return val;
 }
 
-float calcurate_distance(geometry_msgs::Point point, float v)
+float calcurate_distance(geometry_msgs::Point point, float v, float omega)
 {
   float min_distance = 60;
+  int index = 0;
   if(!laser_data.ranges.empty()){
     for(int i=0;i<720;i++){
       float distance = laser_data.ranges[i] - v * INTERVAL;
       if(min_distance > distance){
         min_distance = distance;
+	index = i;
       }
     }
   }
-  return min_distance;
+  float val = 0;
+  if((index<360) && (omega<0)){
+    val = MAX_ANGULAR_VELOCITY - fabs(omega);
+  }else if((index>=360) && (omega>=0)){
+    val = MAX_ANGULAR_VELOCITY - fabs(omega);
+  }
+  return min_distance + val;
 }
 
 float calcurate_velocity(float v)
