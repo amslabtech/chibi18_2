@@ -16,7 +16,7 @@ const float INTERVAL = 0.100;
 
 //評価関数の係数
 const float ALPHA = 0.1;
-const float BETA = 0.2;
+const float BETA = 0;
 const float GAMMA = 0.1;
 
 //DynamicWindowの辺
@@ -69,7 +69,7 @@ int main(int argc, char** argv)
 
     //ゴールの座標設定
     goal.x = 3.0;
-    goal.y = 0.0;
+    goal.y = 1.0;
 
     ros::Rate loop_rate(10);
 
@@ -113,16 +113,18 @@ void evaluate(geometry_msgs::Twist& velocity)
   }
   velocity.linear.x = j * VELOCITY_RESOLUTION;
   velocity.angular.z = window_left + k * ANGULAR_VELOCITY_RESOLUTION;
-  //std::cout << j << std::endl;
-  //std::cout << k << std::endl;
-  //std::cout << "max:" << max << std::endl;
+  std::cout << window_left << " " << ANGULAR_VELOCITY_RESOLUTION << std::endl;
+  std::cout << velocity.angular.z << std::endl;
+  std::cout << j << std::endl;
+  std::cout << k << std::endl;
+  std::cout << "max:" << max << std::endl;
   std::cout << std::endl;
 }
 
 float calcurate_heading(float omega, float angle, geometry_msgs::Point point)
 {
   angle = 0;//TEST DATA
-  float val = 180 - fabs(atan2((point.y-goal.y), (point.x-goal.x)) - angle + omega * INTERVAL) / M_PI * 180;
+  float val = 180 - fabs(atan2((goal.y-point.y), (goal.x-point.x)) - (angle + omega * INTERVAL)) / M_PI * 180;
   return val;
 }
 
