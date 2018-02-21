@@ -76,9 +76,7 @@ int main(int argc, char** argv)
     geometry_msgs::Twist velocity;
 
     while(ros::ok()){
-      if(!laser_data.ranges.empty()){
-        evaluate(velocity);
-      }
+      evaluate(velocity);
       velocity_pub.publish(velocity);
 
       ros::spinOnce();
@@ -131,10 +129,12 @@ float calcurate_heading(float omega, float angle, geometry_msgs::Point point)
 float calcurate_distance(geometry_msgs::Point point, float v)
 {
   float min_distance = 60;
-  for(int i=0;i<720;i++){
-    float distance = laser_data.ranges[i] - v * INTERVAL;
-    if(min_distance > distance){
-      min_distance = distance;
+  if(!laser_data.ranges.empty()){
+    for(int i=0;i<720;i++){
+      float distance = laser_data.ranges[i] - v * INTERVAL;
+      if(min_distance > distance){
+        min_distance = distance;
+      }
     }
   }
   return min_distance;
