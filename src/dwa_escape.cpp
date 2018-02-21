@@ -80,6 +80,7 @@ int main(int argc, char** argv)
     geometry_msgs::Twist velocity;
 
     while(ros::ok()){
+      calcurate_dynamic_window();
       evaluate(velocity);
       velocity_pub.publish(velocity);
       ros::spinOnce();
@@ -92,10 +93,10 @@ void evaluate(geometry_msgs::Twist& velocity)
 {
   std::vector<std::vector<float> > e;
   e.resize(int(window_up/VELOCITY_RESOLUTION));
-  for(int i = 0;i<int(window_up/VELOCITY_RESOLUTION);i++){
+  for(int i = 0;i<int((window_up - window_down)/VELOCITY_RESOLUTION);i++){
     e[i].resize(int(window_right - window_left)/ANGULAR_VELOCITY_RESOLUTION);
   }
-  for(float v = 0;v < window_up/VELOCITY_RESOLUTION;v++){
+  for(float v = 0;v < (window_up-window_down)/VELOCITY_RESOLUTION;v++){
     for(float o = 0;o < (window_right-window_left)/ANGULAR_VELOCITY_RESOLUTION;o++){
       e[v][o] = ALPHA * calcurate_heading(window_left+o*ANGULAR_VELOCITY_RESOLUTION, get_yaw(current_odometry.pose.pose.orientation), current_odometry.pose.pose.position) + BETA * calcurate_distance(current_odometry.pose.pose.position, VELOCITY_RESOLUTION*v) + GAMMA * calcurate_velocity(VELOCITY_RESOLUTION*v);
       //std::cout << e[v][o] << " ";
@@ -105,7 +106,7 @@ void evaluate(geometry_msgs::Twist& velocity)
   int j = 0;
   int k = 0;
   float max = 0;
-  for(float v = 0;v < window_up/VELOCITY_RESOLUTION;v++){
+  for(float v = 0;v < (window_up-window_down)/VELOCITY_RESOLUTION;v++){
     for(float o = 0;o < (window_right-window_left)/ANGULAR_VELOCITY_RESOLUTION;o++){
       if(e[v][o] > max){
         max = e[v][o]; 
@@ -160,7 +161,7 @@ float calcurate_velocity(float v)
   return v;
 }
 
-void calcuate_dynamic_window(void)
+void calcurate_dynamic_window(void)
 {
   window_left = get_larger(-MAX_ANGULAR_VELOCITY, velocity_odometry.angular.z-MAX_ANGULAR_ACCELERATION*INTERVAL);
   window_up = get_smaller(MAX_VELOCITY, velocity_odometry.linear.x+MAX_ACCELERATION*INTERVAL);
