@@ -35,7 +35,7 @@ sensor_msgs::LaserScan laser_data;
 
 void evaluate(geometry_msgs::Twist&);
 float calcurate_heading(float, float, geometry_msgs::Point);
-float calcurate_distance(void);
+float calcurate_distance(geometry_msgs::Point, float);
 float calcurate_velocity(float);
 void calcurate_dynamic_window(void);
 
@@ -47,6 +47,8 @@ void odometry_callback(const nav_msgs::OdometryConstPtr& msg)
 {
   previous_odometry = current_odometry;
   current_odometry = *msg;
+  velocity_odometry.linear.x = sqrt(pow(current_odometry.pose.pose.position.x-previous_odometry.pose.pose.position.x, 2) + pow(current_odometry.pose.pose.position.y-previous_odometry.pose.pose.position.y, 2))/INTERVAL;
+  velocity_odometry.angular.z = (get_yaw(current_odometry.pose.pose.orientation)-get_yaw(current_odometry.pose.pose.orientation))/INTERVAL;
 }
 
 void laser_callback(const sensor_msgs::LaserScanConstPtr& msg)
@@ -74,7 +76,9 @@ int main(int argc, char** argv)
     geometry_msgs::Twist velocity;
 
     while(ros::ok()){
-      evaluate(velocity);
+      if(!laser_data.ranges.empty()){
+        evaluate(velocity);
+      }
       velocity_pub.publish(velocity);
 
       ros::spinOnce();
@@ -92,7 +96,7 @@ void evaluate(geometry_msgs::Twist& velocity)
   }
   for(float v = 0;v < window_up/VELOCITY_RESOLUTION;v++){
     for(float o = 0;o < (window_right-window_left)/ANGULAR_VELOCITY_RESOLUTION;o++){
-      e[v][o] = ALPHA * calcurate_heading(window_left+o*ANGULAR_VELOCITY_RESOLUTION, get_yaw(current_odometry.pose.pose.orientation), current_odometry.pose.pose.position) + BETA * calcurate_distance() + GAMMA * calcurate_velocity(VELOCITY_RESOLUTION*v);
+      e[v][o] = ALPHA * calcurate_heading(window_left+o*ANGULAR_VELOCITY_RESOLUTION, get_yaw(current_odometry.pose.pose.orientation), current_odometry.pose.pose.position) + BETA * calcurate_distance(current_odometry.pose.pose.position, VELOCITY_RESOLUTION*v) + GAMMA * calcurate_velocity(VELOCITY_RESOLUTION*v);
       std::cout << e[v][o] << " ";
     }
     std::cout << std::endl;
@@ -111,9 +115,9 @@ void evaluate(geometry_msgs::Twist& velocity)
   }
   velocity.linear.x = j * VELOCITY_RESOLUTION;
   velocity.angular.z = window_left + k * ANGULAR_VELOCITY_RESOLUTION;
-  std::cout << j << std::endl;
-  std::cout << k << std::endl;
-  std::cout << "max:" << max << std::endl;
+  //std::cout << j << std::endl;
+  //std::cout << k << std::endl;
+  //std::cout << "max:" << max << std::endl;
   std::cout << std::endl;
 }
 
@@ -124,9 +128,16 @@ float calcurate_heading(float omega, float angle, geometry_msgs::Point point)
   return val;
 }
 
-float calcurate_distance(void)
+float calcurate_distance(geometry_msgs::Point point, float v)
 {
-  return 0;
+  float min_distance = 60;
+  for(int i=0;i<720;i++){
+    float distance = laser_data.ranges[i] - v * INTERVAL;
+    if(min_distance > distance){
+      min_distance = distance;
+    }
+  }
+  return min_distance;
 }
 
 float calcurate_velocity(float v)

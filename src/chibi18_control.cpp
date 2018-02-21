@@ -41,6 +41,8 @@ int main(int argc, char** argv){
   
   ros::Publisher controller_pub = nh.advertise<roomba_500driver_meiji::RoombaCtrl>("/roomba/control", 100);
 
+  ros::Publisher arrived_pub = nh.advertise<std_msgs::Bool>("/chibi18/arrived", 100);
+
   ros::Subscriber odometry_sub = nh.subscribe("/roomba/odometry", 100, roomba_odometry_callback);
 
   ros::Subscriber target_sub = nh.subscribe("/chibi18/target", 100, chibi18_target_callback);
@@ -83,6 +85,13 @@ int main(int argc, char** argv){
       roomba_velocity.cntl.angular.z = omega_z;
     }else{
       float position_error = sqrt(pow(_target.x - roomba_position.pose.pose.position.x, 2) + pow(_target.y - roomba_position.pose.pose.position.y, 2));
+      std_msgs::Bool state;
+      if(position_error < 0.01){
+        state.data = true;
+      }else{
+        state.data = false;
+      }
+      arrived_pub.publish(state);
       float vx = 0.3 * position_error;//0.5は適当  
       if(vx < -1.0){
         vx = -1.0;
