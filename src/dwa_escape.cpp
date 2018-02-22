@@ -4,20 +4,21 @@
 #include <sensor_msgs/LaserScan.h>
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_broadcaster.h>
+#include <math.h>
 
 //物理量に修正すること
 const float MAX_VELOCITY = 0.45;
 const float MAX_ANGULAR_VELOCITY = 1.0;
 const float MAX_ACCELERATION = 1.5;
 const float MAX_ANGULAR_ACCELERATION = 20.0;
-const float VELOCITY_RESOLUTION = 0.05;
+const float VELOCITY_RESOLUTION = 0.01;
 const float ANGULAR_VELOCITY_RESOLUTION = 0.05;
 const float INTERVAL = 0.100;
 
 //評価関数の係数
-const float ALPHA = 0.1;//heading
-const float BETA = 0.0;//distance
-const float GAMMA = 0.1;//velocity
+const float ALPHA = 1.0;//heading
+const float BETA = 1.0;//distance
+const float GAMMA = 1.0;//velocity
 
 //DynamicWindowの辺
 float window_left = -MAX_ANGULAR_VELOCITY;
@@ -32,6 +33,7 @@ nav_msgs::Odometry previous_odometry;
 nav_msgs::Odometry current_odometry;
 geometry_msgs::Twist velocity_odometry;
 sensor_msgs::LaserScan laser_data;
+bool odometry_subscribed = false;
 
 void evaluate(geometry_msgs::Twist&);
 float calcurate_heading(float, float, geometry_msgs::Point);
@@ -49,6 +51,9 @@ void odometry_callback(const nav_msgs::OdometryConstPtr& msg)
   current_odometry = *msg;
   velocity_odometry.linear.x = sqrt(pow(current_odometry.pose.pose.position.x-previous_odometry.pose.pose.position.x, 2) + pow(current_odometry.pose.pose.position.y-previous_odometry.pose.pose.position.y, 2))/INTERVAL;
   velocity_odometry.angular.z = (get_yaw(current_odometry.pose.pose.orientation)-get_yaw(previous_odometry.pose.pose.orientation))/INTERVAL;
+  if(!isnan(velocity_odometry.angular.z)){
+    odometry_subscribed = true;
+  }
 }
 
 void laser_callback(const sensor_msgs::LaserScanConstPtr& msg)
@@ -80,10 +85,12 @@ int main(int argc, char** argv)
     geometry_msgs::Twist velocity;
 
     while(ros::ok()){
-      calcurate_dynamic_window();
-      evaluate(velocity);
-      velocity_pub.publish(velocity);
-      std::cout << goal.x <<" "<< goal.y << std::endl;
+      if(odometry_subscribed){
+        calcurate_dynamic_window();
+        evaluate(velocity);
+        velocity_pub.publish(velocity);
+        std::cout << goal.x <<" "<< goal.y << std::endl;
+      }
       ros::spinOnce();
       loop_rate.sleep();
     }
@@ -95,13 +102,16 @@ void evaluate(geometry_msgs::Twist& velocity)
   std::vector<std::vector<float> > e;
   int elements_v = int((window_up - window_down)/VELOCITY_RESOLUTION);
   int elements_o = int((window_right - window_left)/ANGULAR_VELOCITY_RESOLUTION);
+  std::cout << "left=" << window_left << " right=" << window_right << std::endl;
+  std::cout << "v=" << elements_v << " o=" << elements_o << std::endl;
+  //std::cout << velocity_odometry << std::endl;
   e.resize(elements_v);
   for(int i = 0;i<elements_v;i++){
     e[i].resize(elements_o);
   }
   for(float v = 0;v < elements_v;v++){
     for(float o = 0;o < elements_o;o++){
-      e[v][o] = ALPHA * calcurate_heading(window_left+o*ANGULAR_VELOCITY_RESOLUTION, get_yaw(current_odometry.pose.pose.orientation), current_odometry.pose.pose.position) + BETA * calcurate_distance(current_odometry.pose.pose.position, VELOCITY_RESOLUTION*v, ANGULAR_VELOCITY_RESOLUTION*o) + GAMMA * calcurate_velocity(VELOCITY_RESOLUTION*v);
+      e[v][o] = ALPHA * calcurate_heading(window_left+o*ANGULAR_VELOCITY_RESOLUTION, get_yaw(current_odometry.pose.pose.orientation), current_odometry.pose.pose.position) + BETA * calcurate_distance(current_odometry.pose.pose.position, window_down+v*VELOCITY_RESOLUTION, window_left+o*ANGULAR_VELOCITY_RESOLUTION) + GAMMA * calcurate_velocity(VELOCITY_RESOLUTION*v);
       std::cout << e[v][o] << " ";
     }
     std::cout << std::endl;
@@ -120,7 +130,7 @@ void evaluate(geometry_msgs::Twist& velocity)
   }
   float distance_to_goal = sqrt(pow(goal.x - current_odometry.pose.pose.position.x, 2) + pow(goal.y-current_odometry.pose.pose.position.y, 2));
   velocity.linear.x = j * VELOCITY_RESOLUTION / MAX_VELOCITY * 0.5;
-  if(distance_to_goal < 0.5){
+  if(distance_to_goal < 0.2){
     velocity.linear.x *= distance_to_goal;
   }
   velocity.angular.z = (window_left + k * ANGULAR_VELOCITY_RESOLUTION) / MAX_ANGULAR_VELOCITY * 0.5;
@@ -128,7 +138,7 @@ void evaluate(geometry_msgs::Twist& velocity)
     velocity.angular.z *= distance_to_goal;
   }
   //std::cout << velocity_odometry << std::endl;
-  //std::cout << current_odometry.pose.pose << std::endl;
+  std::cout << current_odometry.pose.pose << std::endl;
   std::cout << velocity.linear.x << " " << velocity.angular.z << std::endl;
   //std::cout << window_left << " " << ANGULAR_VELOCITY_RESOLUTION << std::endl;
   //std::cout << velocity.angular.z << std::endl;
@@ -143,7 +153,7 @@ float calcurate_heading(float omega, float angle, geometry_msgs::Point point)
   //angle = 0;//TEST DATA
   angle = get_yaw(current_odometry.pose.pose.orientation);
   float val = 180 - fabs(atan2((goal.y-point.y), (goal.x-point.x)) - (angle + omega * INTERVAL)) / M_PI * 180;
-  //std::cout << val << std::endl;
+  //std::cout << val << " ";
   return val;
 }
 
@@ -161,18 +171,23 @@ float calcurate_distance(geometry_msgs::Point point, float v, float omega)
       }
     }
   }
-  float val = 0;
+  float val = MAX_ANGULAR_VELOCITY;
   if((index<360) && (omega<0)){
     val = MAX_ANGULAR_VELOCITY - fabs(omega);
   }else if((index>=360) && (omega>=0)){
     val = MAX_ANGULAR_VELOCITY - fabs(omega);
+  }else if((index<360) && (omega>=0)){
+    val = MAX_ANGULAR_VELOCITY + fabs(omega);
+  }else if((index>=360) && (omega<0)){
+    val = MAX_ANGULAR_VELOCITY + fabs(omega); 
   }
-  //std::cout << min_distance << std::endl;
+  //std::cout << min_distance+ val  << " ";
   return min_distance+val;
 }
 
 float calcurate_velocity(float v)
 {
+  //std::cout << v << " ";
   return v;
 }
 
