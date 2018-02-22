@@ -1,7 +1,7 @@
 <launch>
   <arg name="distance" default="3.0"/>
   <node pkg="chibi18_control" name="dwa_escape" type="dwa_escape">
-    <param name="DISTANCE" type="double" value="3.0"/>
+    <param name="DISTANCE" value="3.0"/>
   </node>
 
   <node pkg="chibi18_control" name="changer" type="changer" />
