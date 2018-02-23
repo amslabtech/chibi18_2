@@ -10,15 +10,15 @@
 const float MAX_VELOCITY = 0.45;
 const float MAX_ANGULAR_VELOCITY = 1.0;
 const float MAX_ACCELERATION = 1.5;
-const float MAX_ANGULAR_ACCELERATION = 20.0;
+const float MAX_ANGULAR_ACCELERATION = 3.0;
 const float VELOCITY_RESOLUTION = 0.01;
 const float ANGULAR_VELOCITY_RESOLUTION = 0.05;
 const float INTERVAL = 0.100;
 
 //評価関数の係数
-const float ALPHA = 1.0;//heading
-const float BETA = 1.0;//distance
-const float GAMMA = 1.0;//velocity
+const float ALPHA = 1.0;//0.20;//heading
+const float BETA = 0.00;//distance
+const float GAMMA = 1.0;//1.00;//velocity
 
 //DynamicWindowの辺
 float window_left = -MAX_ANGULAR_VELOCITY;
@@ -129,15 +129,14 @@ void evaluate(geometry_msgs::Twist& velocity)
     }
   }
   float distance_to_goal = sqrt(pow(goal.x - current_odometry.pose.pose.position.x, 2) + pow(goal.y-current_odometry.pose.pose.position.y, 2));
-  velocity.linear.x = j * VELOCITY_RESOLUTION / MAX_VELOCITY * 0.5;
-  if(distance_to_goal < 0.2){
-    velocity.linear.x *= distance_to_goal;
+  velocity.linear.x = (window_down + j * VELOCITY_RESOLUTION) / MAX_VELOCITY * 0.5;
+  if(distance_to_goal < 0.5){
+    velocity.linear.x *= 2*distance_to_goal;
   }
   velocity.angular.z = (window_left + k * ANGULAR_VELOCITY_RESOLUTION) / MAX_ANGULAR_VELOCITY * 0.5;
   if(distance_to_goal < 0.05){
     velocity.angular.z *= distance_to_goal;
   }
-  //std::cout << velocity_odometry << std::endl;
   std::cout << current_odometry.pose.pose << std::endl;
   std::cout << velocity.linear.x << " " << velocity.angular.z << std::endl;
   //std::cout << window_left << " " << ANGULAR_VELOCITY_RESOLUTION << std::endl;
@@ -182,7 +181,7 @@ float calcurate_distance(geometry_msgs::Point point, float v, float omega)
     val = MAX_ANGULAR_VELOCITY + fabs(omega); 
   }
   //std::cout << min_distance+ val  << " ";
-  return min_distance+val;
+  return min_distance*10+val;
 }
 
 float calcurate_velocity(float v)
