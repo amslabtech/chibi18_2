@@ -77,8 +77,8 @@ int main(int argc, char** argv)
     ros::Publisher velocity_pub = nh.advertise<geometry_msgs::Twist>("/chibi18/velocity", 100);
 
     //ゴールの座標設定
-    goal.x = distance;
-    goal.y = 0.0;
+    goal.x = 2.0;
+    goal.y = -1.0;
 
     ros::Rate loop_rate(10);
 
@@ -112,9 +112,9 @@ void evaluate(geometry_msgs::Twist& velocity)
   for(float v = 0;v < elements_v;v++){
     for(float o = 0;o < elements_o;o++){
       e[v][o] = ALPHA * calcurate_heading(window_left+o*ANGULAR_VELOCITY_RESOLUTION, get_yaw(current_odometry.pose.pose.orientation), current_odometry.pose.pose.position) + BETA * calcurate_distance(current_odometry.pose.pose.position, window_down+v*VELOCITY_RESOLUTION, window_left+o*ANGULAR_VELOCITY_RESOLUTION) + GAMMA * calcurate_velocity(VELOCITY_RESOLUTION*v);
-      std::cout << e[v][o] << " ";
+      //std::cout << e[v][o] << " ";
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
   }
   int j = 0;
   int k = 0;
@@ -128,12 +128,13 @@ void evaluate(geometry_msgs::Twist& velocity)
       }
     }
   }
+  float ratio = 0.4;
   float distance_to_goal = sqrt(pow(goal.x - current_odometry.pose.pose.position.x, 2) + pow(goal.y-current_odometry.pose.pose.position.y, 2));
-  velocity.linear.x = (window_down + j * VELOCITY_RESOLUTION) / MAX_VELOCITY * 0.5;
+  velocity.linear.x = (window_down + j * VELOCITY_RESOLUTION) / MAX_VELOCITY * ratio;
   if(distance_to_goal < 0.5){
     velocity.linear.x *= 2*distance_to_goal;
   }
-  velocity.angular.z = (window_left + k * ANGULAR_VELOCITY_RESOLUTION) / MAX_ANGULAR_VELOCITY * 0.5;
+  velocity.angular.z = (window_left + k * ANGULAR_VELOCITY_RESOLUTION) / MAX_ANGULAR_VELOCITY * (1 - ratio);
   if(distance_to_goal < 0.05){
     velocity.angular.z *= distance_to_goal;
   }
@@ -151,7 +152,9 @@ float calcurate_heading(float omega, float angle, geometry_msgs::Point point)
 {
   //angle = 0;//TEST DATA
   angle = get_yaw(current_odometry.pose.pose.orientation);
-  float val = 180 - fabs(atan2((goal.y-point.y), (goal.x-point.x)) - (angle + omega * INTERVAL)) / M_PI * 180;
+  float goal_angle = (atan2((goal.y-point.y), (goal.x-point.x)) - (angle + omega * INTERVAL));// / M_PI * 180;
+  std::cout << atan2(sin(goal_angle), cos(goal_angle)) / M_PI * 180<< "[deg]" << std::endl;
+  float val = 180 - fabs(atan2(sin(goal_angle), cos(goal_angle))) / M_PI * 180;
   //std::cout << val << " ";
   return val;
 }
