@@ -9,17 +9,15 @@ int main(int argc, char** argv)
   ros::NodeHandle nh;
   ros::NodeHandle local_nh("~");
 
-  float distance;
-  local_nh.getParam("DISTANCE", distance);
+  geometry_msgs::Pose2D target;
+  local_nh.getParam("X", target.x);
+  local_nh.getParam("Y", target.y);
+  target.theta = 0.0;
 
   ros::Publisher target_pub = nh.advertise<geometry_msgs::Pose2D>("/chibi18/target", 100);
 
   ros::Rate loop_rate(10);
 
-  geometry_msgs::Pose2D target;
-  target.x = distance;
-  target.y = 0.0;
-  target.theta = 0.0;
   while(ros::ok()){
     target_pub.publish(target);
     
