@@ -235,6 +235,15 @@ void calcurate_dynamic_window(void)
   window_up = get_smaller(MAX_VELOCITY, velocity_odometry.linear.x+MAX_ACCELERATION*INTERVAL);
   window_right = get_smaller(MAX_ANGULAR_VELOCITY, velocity_odometry.angular.z+MAX_ANGULAR_ACCELERATION*INTERVAL);
   window_down = get_larger(0, velocity_odometry.linear.x-MAX_ACCELERATION*INTERVAL);
+
+  if(window_left > window_right){
+    window_left = -MAX_ANGULAR_VELOCITY;
+    window_right = MAX_ANGULAR_VELOCITY;
+  }
+  if(window_down > window_up){
+    window_up = MAX_VELOCITY;
+    window_down = -MAX_VELOCITY;
+  }
 }
 
 float get_larger(float a, float b)
