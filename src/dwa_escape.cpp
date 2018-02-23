@@ -34,6 +34,7 @@ nav_msgs::Odometry current_odometry;
 geometry_msgs::Twist velocity_odometry;
 sensor_msgs::LaserScan laser_data;
 bool odometry_subscribed = false;
+bool target_subscribed = false;
 
 void evaluate(geometry_msgs::Twist&);
 float calcurate_heading(float, float, geometry_msgs::Point);
@@ -44,6 +45,12 @@ void calcurate_dynamic_window(void);
 float get_larger(float, float);
 float get_smaller(float, float);
 float get_yaw(geometry_msgs::Quaternion);
+
+void target_callback(const geometry_msgs::Pose2DConstPtr& msg)
+{
+  goal = *msg;
+  target_subscribed = true;
+}
 
 void odometry_callback(const nav_msgs::OdometryConstPtr& msg)
 {
@@ -65,10 +72,6 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "dwa_escape");
     ros::NodeHandle nh;
-    ros::NodeHandle local_nh("~");
-
-    float distance;
-    local_nh.getParam("DISTANCE", distance);
 
     ros::Subscriber odometry_sub = nh.subscribe("/roomba/odometry", 100, odometry_callback);
 
@@ -76,16 +79,14 @@ int main(int argc, char** argv)
 
     ros::Publisher velocity_pub = nh.advertise<geometry_msgs::Twist>("/chibi18/velocity", 100);
 
-    //ゴールの座標設定
-    goal.x = 2.0;
-    goal.y = -1.0;
+    ros::Subscriber target_sub = nh.subscribe("/chibi18/target", 100, target_callback);
 
     ros::Rate loop_rate(10);
 
     geometry_msgs::Twist velocity;
 
     while(ros::ok()){
-      if(odometry_subscribed){
+      if(odometry_subscribed && target_subscribed){
         calcurate_dynamic_window();
         evaluate(velocity);
         float ratio = 0.4;
@@ -155,7 +156,7 @@ float calcurate_heading(float omega, float angle, geometry_msgs::Point point)
   //angle = 0;//TEST DATA
   angle = get_yaw(current_odometry.pose.pose.orientation);
   float goal_angle = (atan2((goal.y-point.y), (goal.x-point.x)) - (angle + omega * INTERVAL));// / M_PI * 180;
-  std::cout << atan2(sin(goal_angle), cos(goal_angle)) / M_PI * 180<< "[deg]" << std::endl;
+  //std::cout << atan2(sin(goal_angle), cos(goal_angle)) / M_PI * 180<< "[deg]" << std::endl;
   float val = 180 - fabs(atan2(sin(goal_angle), cos(goal_angle))) / M_PI * 180;
   //std::cout << val << " ";
   return val;

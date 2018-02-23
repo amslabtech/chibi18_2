@@ -1,12 +1,14 @@
 <launch>
   <arg name="distance" default="3.0"/>
-  <node pkg="chibi18_control" name="dwa_escape" type="dwa_escape">
-    <param name="DISTANCE" value="3.0"/>
+  <node pkg="chibi18_control" name="set_target" type="set_target">
+    <param name="DISTANCE" value="0.3"/>
   </node>
 
-  <node pkg="chibi18_control" name="changer" type="changer" />
+  <node pkg="chibi18_control" name="dwa_escape" type="dwa_escape"/>
 
-  <node pkg="roomba_500driver_meiji" name="main500" type="main500" />
+  <node pkg="chibi18_control" name="changer" type="changer"/>
 
-  <node pkg="hokuyo_node" name="hokuyo_node" type="hokuyo_node" />
+  <node pkg="roomba_500driver_meiji" name="main500" type="main500"/>
+
+  <node pkg="hokuyo_node" name="hokuyo_node" type="hokuyo_node"/>
 </launch>
