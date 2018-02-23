@@ -88,6 +88,16 @@ int main(int argc, char** argv)
       if(odometry_subscribed){
         calcurate_dynamic_window();
         evaluate(velocity);
+        float ratio = 0.4;
+        float distance_to_goal = sqrt(pow(goal.x - current_odometry.pose.pose.position.x, 2) + pow(goal.y-current_odometry.pose.pose.position.y, 2));
+        if(distance_to_goal < 0.5){
+          velocity.linear.x *= 2*distance_to_goal;
+        }
+        if(distance_to_goal < 0.05){
+          velocity.angular.z *= distance_to_goal;
+        }
+        velocity.linear.x *= ratio;
+        velocity.angular.z *= (1-ratio);
         velocity_pub.publish(velocity);
         std::cout << goal.x <<" "<< goal.y << std::endl;
       }
@@ -128,16 +138,8 @@ void evaluate(geometry_msgs::Twist& velocity)
       }
     }
   }
-  float ratio = 0.4;
-  float distance_to_goal = sqrt(pow(goal.x - current_odometry.pose.pose.position.x, 2) + pow(goal.y-current_odometry.pose.pose.position.y, 2));
-  velocity.linear.x = (window_down + j * VELOCITY_RESOLUTION) / MAX_VELOCITY * ratio;
-  if(distance_to_goal < 0.5){
-    velocity.linear.x *= 2*distance_to_goal;
-  }
-  velocity.angular.z = (window_left + k * ANGULAR_VELOCITY_RESOLUTION) / MAX_ANGULAR_VELOCITY * (1 - ratio);
-  if(distance_to_goal < 0.05){
-    velocity.angular.z *= distance_to_goal;
-  }
+  velocity.linear.x = (window_down + j * VELOCITY_RESOLUTION) / MAX_VELOCITY;
+  velocity.angular.z = (window_left + k * ANGULAR_VELOCITY_RESOLUTION) / MAX_ANGULAR_VELOCITY;
   std::cout << current_odometry.pose.pose << std::endl;
   std::cout << velocity.linear.x << " " << velocity.angular.z << std::endl;
   //std::cout << window_left << " " << ANGULAR_VELOCITY_RESOLUTION << std::endl;
