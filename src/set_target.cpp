@@ -13,6 +13,7 @@ int main(int argc, char** argv)
   local_nh.getParam("X", target.x);
   local_nh.getParam("Y", target.y);
   target.theta = 0.0;
+  std::cout << "x=" << target.x << " y=" << target.y << std::endl;
 
   ros::Publisher target_pub = nh.advertise<geometry_msgs::Pose2D>("/chibi18/target", 100);
 
