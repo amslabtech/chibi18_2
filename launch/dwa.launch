@@ -2,13 +2,18 @@
   <arg name="x" default="3.0"/>
   <arg name="y" default="0.0"/>
   <node pkg="chibi18_control" name="set_target" type="set_target">
-    <param name="X" value="0.3"/>
+    <param name="X" value="3.0"/>
     <param name="Y" value="0.0"/>
   </node>
 
   <node pkg="chibi18_control" name="dwa_escape" type="dwa_escape"/>
 
   <node pkg="chibi18_control" name="changer" type="changer"/>
+
+  <arg name="distance" default="0.5"/>
+  <node pkg="chibi18_control" name="stopper" type="stopper">
+    <param name="DISTANCE" value="0.7"/> 
+  </node>
 
   <node pkg="roomba_500driver_meiji" name="main500" type="main500"/>
 

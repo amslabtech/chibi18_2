@@ -5,6 +5,7 @@
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_broadcaster.h>
 #include <math.h>
+#include <std_msgs/Bool.h>
 
 //物理量に修正すること
 const float MAX_VELOCITY = 0.45;
@@ -26,15 +27,15 @@ float window_up = MAX_VELOCITY;
 float window_right = MAX_ANGULAR_VELOCITY;
 float window_down = -MAX_VELOCITY;
 
-geometry_msgs::Pose2D goal;
-
 //subscribe用
 nav_msgs::Odometry previous_odometry;
 nav_msgs::Odometry current_odometry;
 geometry_msgs::Twist velocity_odometry;
+geometry_msgs::Pose2D goal;
 sensor_msgs::LaserScan laser_data;
 bool odometry_subscribed = false;
 bool target_subscribed = false;
+bool move_allowed = true;
 
 void evaluate(geometry_msgs::Twist&);
 float calcurate_heading(float, float, geometry_msgs::Point);
@@ -68,6 +69,11 @@ void laser_callback(const sensor_msgs::LaserScanConstPtr& msg)
   laser_data = *msg;
 }
 
+void stopper_callback(const std_msgs::BoolConstPtr& msg)
+{
+  move_allowed = msg->data;
+}
+
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "dwa_escape");
@@ -81,6 +87,7 @@ int main(int argc, char** argv)
 
     ros::Subscriber target_sub = nh.subscribe("/chibi18/target", 100, target_callback);
 
+    ros::Subscriber stopper_sub = nh.subscribe("/chibi18/stop", 100, stopper_callback);
     ros::Rate loop_rate(10);
 
     geometry_msgs::Twist velocity;
@@ -89,7 +96,7 @@ int main(int argc, char** argv)
       if(odometry_subscribed && target_subscribed){
         calcurate_dynamic_window();
         evaluate(velocity);
-        float ratio = 0.4;
+        float ratio = 0.3;
         float distance_to_goal = sqrt(pow(goal.x - current_odometry.pose.pose.position.x, 2) + pow(goal.y-current_odometry.pose.pose.position.y, 2));
         if(distance_to_goal < 0.5){
           velocity.linear.x *= 2*distance_to_goal;
@@ -99,8 +106,34 @@ int main(int argc, char** argv)
         }
         velocity.linear.x *= ratio;
         velocity.angular.z *= (1-ratio);
+
+        //stopの時
+        if(!move_allowed){
+          velocity.linear.x = 0;
+        }
+
+        //回避
+        float min_distance = 60;
+        int index = 0;
+        for(int i=180;i<540;i++){//45~135        
+          if(min_distance > laser_data.ranges[i]){
+            min_distance = laser_data.ranges[i];
+            index = i;
+          }
+        }
+        if(min_distance < 0.8){
+          if(index < 360){
+            velocity.angular.z = 0.5;
+            std::cout << "escape for left" << std::endl;
+          }else{
+            velocity.angular.z = -0.5;
+            std::cout << "escape for right" << std::endl;
+          }
+        }
+        std::cout << velocity << std::endl;
+
         velocity_pub.publish(velocity);
-        std::cout << goal.x <<" "<< goal.y << std::endl;
+        std::cout << "goal:" <<  goal.x <<" "<< goal.y << std::endl;
       }
       ros::spinOnce();
       loop_rate.sleep();
@@ -113,8 +146,8 @@ void evaluate(geometry_msgs::Twist& velocity)
   std::vector<std::vector<float> > e;
   int elements_v = int((window_up - window_down)/VELOCITY_RESOLUTION);
   int elements_o = int((window_right - window_left)/ANGULAR_VELOCITY_RESOLUTION);
-  std::cout << "left=" << window_left << " right=" << window_right << std::endl;
-  std::cout << "v=" << elements_v << " o=" << elements_o << std::endl;
+  //std::cout << "left=" << window_left << " right=" << window_right << std::endl;
+  //std::cout << "v=" << elements_v << " o=" << elements_o << std::endl;
   //std::cout << velocity_odometry << std::endl;
   e.resize(elements_v);
   for(int i = 0;i<elements_v;i++){
@@ -142,12 +175,12 @@ void evaluate(geometry_msgs::Twist& velocity)
   velocity.linear.x = (window_down + j * VELOCITY_RESOLUTION) / MAX_VELOCITY;
   velocity.angular.z = (window_left + k * ANGULAR_VELOCITY_RESOLUTION) / MAX_ANGULAR_VELOCITY;
   std::cout << current_odometry.pose.pose << std::endl;
-  std::cout << velocity.linear.x << " " << velocity.angular.z << std::endl;
+  //std::cout << velocity.linear.x << " " << velocity.angular.z << std::endl;
   //std::cout << window_left << " " << ANGULAR_VELOCITY_RESOLUTION << std::endl;
   //std::cout << velocity.angular.z << std::endl;
-  std::cout << j << std::endl;
-  std::cout << k << std::endl;
-  std::cout << "max:" << max << std::endl;
+  //std::cout << j << std::endl;
+  //std::cout << k << std::endl;
+  //std::cout << "max:" << max << std::endl;
   std::cout << std::endl;
 }
 

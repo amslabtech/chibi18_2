@@ -17,11 +17,14 @@ int main(int argc, char** argv)
 {
   ros::init(argc, argv, "stopper");
   ros::NodeHandle nh;
+  ros::NodeHandle local_nh("~");
+  
+  float distance = 0;
+  local_nh.getParam("DISTANCE", distance);
 
   ros::Subscriber laser_sub = nh.subscribe("/scan", 100, laser_callback);
 
   ros::Publisher stop_pub = nh.advertise<std_msgs::Bool>("/chibi18/stop", 100);
-
 
   ros::Rate loop_rate(10);
   
@@ -29,8 +32,8 @@ int main(int argc, char** argv)
     //std::cout << data << std::endl;
     std_msgs::Bool state;
     if(!data.ranges.empty()){
-      std::cout << data << std::endl;
-      if(data.ranges[360] < 0.5){
+      //std::cout << data.ranges[360] << "[m]" <<  std::endl;
+      if(data.ranges[360] < distance){
         state.data = false;
       }else{
         state.data = true;
