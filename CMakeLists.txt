@@ -141,6 +141,8 @@ add_executable(stopper src/stopper.cpp)
 add_executable(runner src/runner.cpp)
 add_executable(changer src/changer.cpp)
 add_executable(dwa_escape src/dwa_escape.cpp)
+add_executable(laser_link src/laser_link.cpp)
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -170,6 +172,10 @@ add_executable(dwa_escape src/dwa_escape.cpp)
  target_link_libraries(dwa_escape
    ${catkin_LIBRARIES}
  )
+ target_link_libraries(laser_link
+   ${catkin_LIBRARIES}
+ )
+
 #############
 ## Install ##
 #############

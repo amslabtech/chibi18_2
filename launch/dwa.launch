@@ -10,6 +10,8 @@
 
   <node pkg="chibi18_control" name="changer" type="changer"/>
 
+  <node pkg="chibi18_control" name="laser_link" type="laser_link"/>
+
   <arg name="distance" default="0.5"/>
   <node pkg="chibi18_control" name="stopper" type="stopper">
     <param name="DISTANCE" value="0.7"/> 
