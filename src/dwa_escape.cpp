@@ -242,7 +242,7 @@ void calcurate_dynamic_window(void)
   }
   if(window_down > window_up){
     window_up = MAX_VELOCITY;
-    window_down = -MAX_VELOCITY;
+    window_down = 0;
   }
 }
 
