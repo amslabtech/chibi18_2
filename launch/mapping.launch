@@ -1,0 +1,8 @@
+<launch>
+
+  <node pkg="roomba_500driver_maiji name="main500" type="main500"/>
+  <node pkg="roomba_teleop_meiji name="electoric_joystick_drive" type="electric_joystick_driver"/>
+  <node pkg="hokuyo_node" name="hokuyo_node" type="hokuyo_node"/>
+  <node pkg="chibi18_control" name="laser_link" type="laser_link"/>
+  
+</launch>
