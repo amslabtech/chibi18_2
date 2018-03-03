@@ -155,7 +155,9 @@ void evaluate(geometry_msgs::Twist& velocity)
   }
   for(float v = 0;v < elements_v;v++){
     for(float o = 0;o < elements_o;o++){
-      e[v][o] = ALPHA * calcurate_heading(window_left+o*ANGULAR_VELOCITY_RESOLUTION, get_yaw(current_odometry.pose.pose.orientation), current_odometry.pose.pose.position) + BETA * calcurate_distance(current_odometry.pose.pose.position, window_down+v*VELOCITY_RESOLUTION, window_left+o*ANGULAR_VELOCITY_RESOLUTION) + GAMMA * calcurate_velocity(VELOCITY_RESOLUTION*v);
+      float _velocity = window_down + v * VELOCITY_RESOLUTION;
+      float _omega = window_left + o * ANGULAR_VELOCITY_RESOLUTION; 
+      e[v][o] = ALPHA * calcurate_heading(_omega, get_yaw(current_odometry.pose.pose.orientation), current_odometry.pose.pose.position) + BETA * calcurate_distance(current_odometry.pose.pose.position, _velocity, _omega) + GAMMA * calcurate_velocity(_velocity);
       //std::cout << e[v][o] << " ";
     }
     //std::cout << std::endl;
@@ -186,8 +188,6 @@ void evaluate(geometry_msgs::Twist& velocity)
 
 float calcurate_heading(float omega, float angle, geometry_msgs::Point point)
 {
-  //angle = 0;//TEST DATA
-  angle = get_yaw(current_odometry.pose.pose.orientation);
   float goal_angle = (atan2((goal.y-point.y), (goal.x-point.x)) - (angle + omega * INTERVAL));// / M_PI * 180;
   //std::cout << atan2(sin(goal_angle), cos(goal_angle)) / M_PI * 180<< "[deg]" << std::endl;
   float val = 180 - fabs(atan2(sin(goal_angle), cos(goal_angle))) / M_PI * 180;
