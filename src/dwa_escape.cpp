@@ -15,10 +15,12 @@ const float MAX_ANGULAR_ACCELERATION = 3.0;
 const float VELOCITY_RESOLUTION = 0.01;
 const float ANGULAR_VELOCITY_RESOLUTION = 0.05;
 const float INTERVAL = 0.100;
+const float SIMULATE_TIME = 2.000;
+const float LASER_RESOLUTION = 0.00436332312;//[rad]
 
 //評価関数の係数
 const float ALPHA = 1.0;//0.20;//heading
-const float BETA = 0.00;//distance
+const float BETA = 1.00;//distance
 const float GAMMA = 1.0;//1.00;//velocity
 
 //DynamicWindowの辺
@@ -39,7 +41,7 @@ bool move_allowed = true;
 
 void evaluate(geometry_msgs::Twist&);
 float calcurate_heading(float, float, geometry_msgs::Point);
-float calcurate_distance(geometry_msgs::Point, float, float);
+float calcurate_distance(float, float);
 float calcurate_velocity(float);
 void calcurate_dynamic_window(void);
 
@@ -93,7 +95,7 @@ int main(int argc, char** argv)
     geometry_msgs::Twist velocity;
 
     while(ros::ok()){
-      if(odometry_subscribed && target_subscribed){
+      if(odometry_subscribed && target_subscribed && !laser_data.ranges.empty()){
         calcurate_dynamic_window();
         evaluate(velocity);
         float ratio = 0.3;
@@ -112,24 +114,6 @@ int main(int argc, char** argv)
           velocity.linear.x = 0;
         }
 
-        //回避
-        float min_distance = 60;
-        int index = 0;
-        for(int i=180;i<540;i++){//45~135        
-          if(min_distance > laser_data.ranges[i]){
-            min_distance = laser_data.ranges[i];
-            index = i;
-          }
-        }
-        if(min_distance < 0.8){
-          if(index < 360){
-            velocity.angular.z = 0.5;
-            std::cout << "escape for left" << std::endl;
-          }else{
-            velocity.angular.z = -0.5;
-            std::cout << "escape for right" << std::endl;
-          }
-        }
         std::cout << velocity << std::endl;
 
         velocity_pub.publish(velocity);
@@ -157,7 +141,7 @@ void evaluate(geometry_msgs::Twist& velocity)
     for(float o = 0;o < elements_o;o++){
       float _velocity = window_down + v * VELOCITY_RESOLUTION;
       float _omega = window_left + o * ANGULAR_VELOCITY_RESOLUTION; 
-      e[v][o] = ALPHA * calcurate_heading(_omega, get_yaw(current_odometry.pose.pose.orientation), current_odometry.pose.pose.position) + BETA * calcurate_distance(current_odometry.pose.pose.position, _velocity, _omega) + GAMMA * calcurate_velocity(_velocity);
+      e[v][o] = ALPHA * calcurate_heading(_omega, get_yaw(current_odometry.pose.pose.orientation), current_odometry.pose.pose.position) + BETA * calcurate_distance(_velocity, _omega) + GAMMA * calcurate_velocity(_velocity);
       //std::cout << e[v][o] << " ";
     }
     //std::cout << std::endl;
@@ -195,32 +179,29 @@ float calcurate_heading(float omega, float angle, geometry_msgs::Point point)
   return val;
 }
 
-float calcurate_distance(geometry_msgs::Point point, float v, float omega)
+float calcurate_distance(float v, float omega)
 {
-  //point.x = 0;point.y = 0;//TEST DATA
-  float min_distance = 60;
-  int index = 0;
-  if(!laser_data.ranges.empty()){
-    for(int i=180;i<540;i++){
-      float distance = laser_data.ranges[i] - v * INTERVAL;
-      if(min_distance > distance){
-        min_distance = distance;
-	index = i;
+  geometry_msgs::Pose2D position;
+  if(omega != 0.0){
+    position.x = v / omega * sin(omega * INTERVAL);
+    position.y = v / omega * (1 - cos(omega * INTERVAL));
+  }else{
+    position.x = v * INTERVAL;
+    position.y = 0;
+  }
+  geometry_msgs::Pose2D object;
+  float distance = 3.0;
+  for(int i=60;i<660;i++){//15~165
+    if(laser_data.ranges[i] < 3.0){
+      object.x = laser_data.ranges[i] * sin(LASER_RESOLUTION * i);
+      object.y = laser_data.ranges[i] * cos(LASER_RESOLUTION * i) * -1.0;
+      float _distance = sqrt(pow((object.x - position.x), 2) + pow((object.y - position.y), 2)); 
+      if(_distance < distance){
+        distance = _distance;
       }
     }
   }
-  float val = MAX_ANGULAR_VELOCITY;
-  if((index<360) && (omega<0)){
-    val = MAX_ANGULAR_VELOCITY - fabs(omega);
-  }else if((index>=360) && (omega>=0)){
-    val = MAX_ANGULAR_VELOCITY - fabs(omega);
-  }else if((index<360) && (omega>=0)){
-    val = MAX_ANGULAR_VELOCITY + fabs(omega);
-  }else if((index>=360) && (omega<0)){
-    val = MAX_ANGULAR_VELOCITY + fabs(omega); 
-  }
-  //std::cout << min_distance+ val  << " ";
-  return min_distance*10+val;
+  return distance;
 }
 
 float calcurate_velocity(float v)
