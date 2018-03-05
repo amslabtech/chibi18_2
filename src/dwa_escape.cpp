@@ -9,7 +9,7 @@
 
 //物理量に修正すること
 const float MAX_VELOCITY = 0.45;
-const float MAX_ANGULAR_VELOCITY = 1.0;
+const float MAX_ANGULAR_VELOCITY = 2.0;
 const float MAX_ACCELERATION = 1.5;
 const float MAX_ANGULAR_ACCELERATION = 3.0;
 const float VELOCITY_RESOLUTION = 0.01;
@@ -19,9 +19,9 @@ const float SIMULATE_TIME = 2.000;
 const float LASER_RESOLUTION = 0.00436332312;//[rad]
 
 //評価関数の係数
-const float ALPHA = 1.0;//0.20;//heading
-const float BETA = 1.00;//distance
-const float GAMMA = 1.0;//1.00;//velocity
+const float ALPHA = 0.0;//0.20;//heading
+const float BETA = 1;//distance
+const float GAMMA = 0;//1.00;//velocity
 
 //DynamicWindowの辺
 float window_left = -MAX_ANGULAR_VELOCITY;
@@ -35,6 +35,7 @@ nav_msgs::Odometry current_odometry;
 geometry_msgs::Twist velocity_odometry;
 geometry_msgs::Pose2D goal;
 sensor_msgs::LaserScan laser_data;
+sensor_msgs::LaserScan _laser_data;//計算用
 bool odometry_subscribed = false;
 bool target_subscribed = false;
 bool move_allowed = true;
@@ -137,6 +138,7 @@ void evaluate(geometry_msgs::Twist& velocity)
   for(int i = 0;i<elements_v;i++){
     e[i].resize(elements_o);
   }
+  _laser_data = laser_data;
   for(float v = 0;v < elements_v;v++){
     for(float o = 0;o < elements_o;o++){
       float _velocity = window_down + v * VELOCITY_RESOLUTION;
@@ -144,7 +146,7 @@ void evaluate(geometry_msgs::Twist& velocity)
       e[v][o] = ALPHA * calcurate_heading(_omega, get_yaw(current_odometry.pose.pose.orientation), current_odometry.pose.pose.position) + BETA * calcurate_distance(_velocity, _omega) + GAMMA * calcurate_velocity(_velocity);
       //std::cout << e[v][o] << " ";
     }
-    //std::cout << std::endl;
+    std::cout << std::endl;
   }
   int j = 0;
   int k = 0;
@@ -183,24 +185,44 @@ float calcurate_distance(float v, float omega)
 {
   geometry_msgs::Pose2D position;
   if(omega != 0.0){
-    position.x = v / omega * sin(omega * INTERVAL);
-    position.y = v / omega * (1 - cos(omega * INTERVAL));
+    position.x = v / omega * sin(omega * SIMULATE_TIME);
+    position.y = v / omega * cos(omega * SIMULATE_TIME);
   }else{
-    position.x = v * INTERVAL;
+    position.x = v * SIMULATE_TIME;
     position.y = 0;
   }
   geometry_msgs::Pose2D object;
-  float distance = 3.0;
+
+  int index = 0;
+
+  float distance = 1.5;
   for(int i=60;i<660;i++){//15~165
-    if(laser_data.ranges[i] < 3.0){
-      object.x = laser_data.ranges[i] * sin(LASER_RESOLUTION * i);
-      object.y = laser_data.ranges[i] * cos(LASER_RESOLUTION * i) * -1.0;
+    if(_laser_data.ranges[i] < 1.5){
+      object.x = _laser_data.ranges[i] * sin(LASER_RESOLUTION * i);
+      object.y = _laser_data.ranges[i] * cos(LASER_RESOLUTION * i) * -1.0;
+      if((object.y < position.y) && (omega > 0) && (object.y > 0)){
+        //std::cout << "b";
+        return 0;
+      }else if((object.y > position.y) && (omega < 0) && (object.y < 0)){
+        //std::cout << "c";
+        return 0;
+      }else if(object.x < position.x){
+        //std::cout << "a";
+        return 0;
+      }
+      //std::cout << object << " ";
       float _distance = sqrt(pow((object.x - position.x), 2) + pow((object.y - position.y), 2)); 
       if(_distance < distance){
+        //std::cout << "obj" << object << "pos" << position << std::endl;
+        index = i;
         distance = _distance;
       }
     }
   }
+  std::cout << "(" << _laser_data.ranges[index] * sin(LASER_RESOLUTION * index)  << "," << _laser_data.ranges[index] * cos(LASER_RESOLUTION * index) * -1 << ") ";
+  //std::cout << v << "[m/s]" << omega << "[rad/s]" << std::endl;
+  //std::cout << position << " ";
+  //std::cout << distance << " ";
   return distance;
 }
 
