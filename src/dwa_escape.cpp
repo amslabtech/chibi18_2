@@ -19,9 +19,9 @@ const float SIMULATE_TIME = 2.500;
 const float LASER_RESOLUTION = 0.00436332312;//[rad]
 
 //評価関数の係数
-const float ALPHA = 0.10;//0.20;//heading
-const float BETA = 1.0;//distance
-const float GAMMA = 1.8;//1.00;//velocity
+float ALPHA = 0;//heading
+float BETA = 0;//distance
+float GAMMA = 0;//velocity
 
 //DynamicWindowの辺
 float window_left = -MAX_ANGULAR_VELOCITY;
@@ -82,6 +82,11 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "dwa_escape");
     ros::NodeHandle nh;
 
+    ros::NodeHandle local_nh("~");
+    local_nh.getParam("ALPHA", ALPHA);
+    local_nh.getParam("BETA", BETA);    
+    local_nh.getParam("GAMMA", GAMMA);
+
     ros::Subscriber odometry_sub = nh.subscribe("/roomba/odometry", 100, odometry_callback);
 
     ros::Subscriber laser_sub = nh.subscribe("/scan", 100, laser_callback);
@@ -105,7 +110,7 @@ int main(int argc, char** argv)
           velocity.linear.x *= 2*distance_to_goal;
         }
         if(distance_to_goal < 0.05){
-          velocity.angular.z *= distance_to_goal;
+          velocity.angular.z *= 2*distance_to_goal;
         }
         velocity.linear.x *= ratio;
         velocity.angular.z *= (1-ratio);
@@ -206,7 +211,7 @@ float calcurate_distance(float v, float omega)
 
   int index = 0;
 
-  const float LIMIT_DISTANCE = 2.0;
+  const float LIMIT_DISTANCE = 1.5;
   float distance = LIMIT_DISTANCE;
   for(int i=60;i<660;i++){//15~165
     if(_laser_data.ranges[i] < LIMIT_DISTANCE){
