@@ -11,17 +11,17 @@
 const float MAX_VELOCITY = 0.45;
 const float MAX_ANGULAR_VELOCITY = 2.0;
 const float MAX_ACCELERATION = 1.5;
-const float MAX_ANGULAR_ACCELERATION = 3.0;
+const float MAX_ANGULAR_ACCELERATION = 6.0;
 const float VELOCITY_RESOLUTION = 0.01;
 const float ANGULAR_VELOCITY_RESOLUTION = 0.05;
 const float INTERVAL = 0.100;
-const float SIMULATE_TIME = 2.000;
+const float SIMULATE_TIME = 2.500;
 const float LASER_RESOLUTION = 0.00436332312;//[rad]
 
 //評価関数の係数
-const float ALPHA = 0.0;//0.20;//heading
-const float BETA = 1;//distance
-const float GAMMA = 0;//1.00;//velocity
+const float ALPHA = 0.10;//0.20;//heading
+const float BETA = 1.0;//distance
+const float GAMMA = 1.8;//1.00;//velocity
 
 //DynamicWindowの辺
 float window_left = -MAX_ANGULAR_VELOCITY;
@@ -99,7 +99,7 @@ int main(int argc, char** argv)
       if(odometry_subscribed && target_subscribed && !laser_data.ranges.empty()){
         calcurate_dynamic_window();
         evaluate(velocity);
-        float ratio = 0.3;
+        float ratio = 0.25;
         float distance_to_goal = sqrt(pow(goal.x - current_odometry.pose.pose.position.x, 2) + pow(goal.y-current_odometry.pose.pose.position.y, 2));
         if(distance_to_goal < 0.5){
           velocity.linear.x *= 2*distance_to_goal;
@@ -144,7 +144,7 @@ void evaluate(geometry_msgs::Twist& velocity)
       float _velocity = window_down + v * VELOCITY_RESOLUTION;
       float _omega = window_left + o * ANGULAR_VELOCITY_RESOLUTION; 
       e[v][o] = ALPHA * calcurate_heading(_omega, get_yaw(current_odometry.pose.pose.orientation), current_odometry.pose.pose.position) + BETA * calcurate_distance(_velocity, _omega) + GAMMA * calcurate_velocity(_velocity);
-      //std::cout << e[v][o] << " ";
+      std::cout << e[v][o] << " ";
     }
     std::cout << std::endl;
   }
@@ -184,6 +184,7 @@ float calcurate_heading(float omega, float angle, geometry_msgs::Point point)
 float calcurate_distance(float v, float omega)
 {
   geometry_msgs::Pose2D position;
+  /*
   if(omega != 0.0){
     position.x = v / omega * sin(omega * SIMULATE_TIME);
     position.y = v / omega * cos(omega * SIMULATE_TIME);
@@ -191,15 +192,27 @@ float calcurate_distance(float v, float omega)
     position.x = v * SIMULATE_TIME;
     position.y = 0;
   }
+  */
+  float dt = 0.01;
+  for(float t=0;t<SIMULATE_TIME;t+=dt){
+    position.x += v * cos(omega * t) * dt;
+    position.y += v * sin(omega * t) * dt;
+  }
+
+  //std::cout << std::setprecision(2) << "(" << v << ", " << omega << ")";
+  //std::cout << std::setprecision(2) << "(" << position.x << ", " << position.y << ")";
+
   geometry_msgs::Pose2D object;
 
   int index = 0;
 
-  float distance = 1.5;
+  const float LIMIT_DISTANCE = 2.0;
+  float distance = LIMIT_DISTANCE;
   for(int i=60;i<660;i++){//15~165
-    if(_laser_data.ranges[i] < 1.5){
+    if(_laser_data.ranges[i] < LIMIT_DISTANCE){
       object.x = _laser_data.ranges[i] * sin(LASER_RESOLUTION * i);
       object.y = _laser_data.ranges[i] * cos(LASER_RESOLUTION * i) * -1.0;
+      /*
       if((object.y < position.y) && (omega > 0) && (object.y > 0)){
         //std::cout << "b";
         return 0;
@@ -210,6 +223,7 @@ float calcurate_distance(float v, float omega)
         //std::cout << "a";
         return 0;
       }
+      */
       //std::cout << object << " ";
       float _distance = sqrt(pow((object.x - position.x), 2) + pow((object.y - position.y), 2)); 
       if(_distance < distance){
@@ -217,9 +231,12 @@ float calcurate_distance(float v, float omega)
         index = i;
         distance = _distance;
       }
+      if(distance < 0.3){
+        return 0;
+      }
     }
   }
-  std::cout << "(" << _laser_data.ranges[index] * sin(LASER_RESOLUTION * index)  << "," << _laser_data.ranges[index] * cos(LASER_RESOLUTION * index) * -1 << ") ";
+  //std::cout << "(" << _laser_data.ranges[index] * sin(LASER_RESOLUTION * index)  << "," << _laser_data.ranges[index] * cos(LASER_RESOLUTION * index) * -1 << ") ";
   //std::cout << v << "[m/s]" << omega << "[rad/s]" << std::endl;
   //std::cout << position << " ";
   //std::cout << distance << " ";
