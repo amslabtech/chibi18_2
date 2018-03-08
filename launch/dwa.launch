@@ -21,7 +21,7 @@
     <param name="DISTANCE" value="0.7"/> 
   </node>
 
-  <node pkg="roomba_500driver_meiji" name="main500" type="main500"/>
+  <include file="$(find chibi18_control)/launch/basis.launch"/>
 
-  <node pkg="hokuyo_node" name="hokuyo_node" type="hokuyo_node"/>
 </launch>
+
