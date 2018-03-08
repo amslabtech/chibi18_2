@@ -1,11 +1,12 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
-#include <geometry_msgs/Pose2D.h>
 #include <sensor_msgs/LaserScan.h>
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
 #include <math.h>
 #include <std_msgs/Bool.h>
+#include <geometry_msgs/Pose2D.h>
 
 //物理量に修正すること
 const float MAX_VELOCITY = 0.45;
@@ -33,7 +34,8 @@ float window_down = -MAX_VELOCITY;
 nav_msgs::Odometry previous_odometry;
 nav_msgs::Odometry current_odometry;
 geometry_msgs::Twist velocity_odometry;
-geometry_msgs::Pose2D goal;
+geometry_msgs::PointStamped goal;
+geometry_msgs::PointStamped _goal;
 sensor_msgs::LaserScan laser_data;
 sensor_msgs::LaserScan _laser_data;//計算用
 bool odometry_subscribed = false;
@@ -50,9 +52,9 @@ float get_larger(float, float);
 float get_smaller(float, float);
 float get_yaw(geometry_msgs::Quaternion);
 
-void target_callback(const geometry_msgs::Pose2DConstPtr& msg)
+void target_callback(const geometry_msgs::PointStampedConstPtr& msg)
 {
-  goal = *msg;
+  _goal = *msg;
   target_subscribed = true;
 }
 
@@ -96,6 +98,9 @@ int main(int argc, char** argv)
     ros::Subscriber target_sub = nh.subscribe("/chibi18/target", 100, target_callback);
 
     ros::Subscriber stopper_sub = nh.subscribe("/chibi18/stop", 100, stopper_callback);
+
+    tf::TransformListener listener;
+
     ros::Rate loop_rate(10);
 
     geometry_msgs::Twist velocity;
@@ -103,9 +108,10 @@ int main(int argc, char** argv)
     while(ros::ok()){
       if(odometry_subscribed && target_subscribed && !laser_data.ranges.empty()){
         calcurate_dynamic_window();
+        listener.transformPoint("odom", _goal, goal);
         evaluate(velocity);
         float ratio = 0.25;
-        float distance_to_goal = sqrt(pow(goal.x - current_odometry.pose.pose.position.x, 2) + pow(goal.y-current_odometry.pose.pose.position.y, 2));
+        float distance_to_goal = sqrt(pow(goal.point.x - current_odometry.pose.pose.position.x, 2) + pow(goal.point.y-current_odometry.pose.pose.position.y, 2));
         if(distance_to_goal < 0.5){
           velocity.linear.x *= 2*distance_to_goal;
         }
@@ -123,7 +129,7 @@ int main(int argc, char** argv)
         std::cout << velocity << std::endl;
 
         velocity_pub.publish(velocity);
-        std::cout << "goal:" <<  goal.x <<" "<< goal.y << std::endl;
+        std::cout << "goal:" <<  goal.point.x <<" "<< goal.point.y << std::endl;
       }
       ros::spinOnce();
       loop_rate.sleep();
@@ -179,7 +185,7 @@ void evaluate(geometry_msgs::Twist& velocity)
 
 float calcurate_heading(float omega, float angle, geometry_msgs::Point point)
 {
-  float goal_angle = (atan2((goal.y-point.y), (goal.x-point.x)) - (angle + omega * INTERVAL));// / M_PI * 180;
+  float goal_angle = (atan2((goal.point.y-point.y), (goal.point.x-point.x)) - (angle + omega * INTERVAL));// / M_PI * 180;
   //std::cout << atan2(sin(goal_angle), cos(goal_angle)) / M_PI * 180<< "[deg]" << std::endl;
   float val = 180 - fabs(atan2(sin(goal_angle), cos(goal_angle))) / M_PI * 180;
   //std::cout << val << " ";

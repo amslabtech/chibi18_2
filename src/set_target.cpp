@@ -1,6 +1,6 @@
 #include <ros/ros.h>
 #include <boost/thread.hpp>
-#include <geometry_msgs/Pose2D.h>
+#include <geometry_msgs/PointStamped.h>
 #include <iostream>
 
 int main(int argc, char** argv)
@@ -9,13 +9,14 @@ int main(int argc, char** argv)
   ros::NodeHandle nh;
   ros::NodeHandle local_nh("~");
 
-  geometry_msgs::Pose2D target;
-  local_nh.getParam("X", target.x);
-  local_nh.getParam("Y", target.y);
-  target.theta = 0.0;
-  std::cout << "x=" << target.x << " y=" << target.y << std::endl;
+  geometry_msgs::PointStamped target;
+  local_nh.getParam("X", target.point.x);
+  local_nh.getParam("Y", target.point.y);
+  target.header.frame_id = "odom";
 
-  ros::Publisher target_pub = nh.advertise<geometry_msgs::Pose2D>("/chibi18/target", 100);
+  std::cout << "x=" << target.point.x << " y=" << target.point.y << std::endl;
+
+  ros::Publisher target_pub = nh.advertise<geometry_msgs::PointStamped>("/chibi18/target", 100);
 
   ros::Rate loop_rate(10);
 
