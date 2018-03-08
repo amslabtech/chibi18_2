@@ -7,6 +7,8 @@
 #include <math.h>
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/Pose2D.h>
+#include <nav_msgs/Path.h>
+#include <geometry_msgs/TwistStamped.h>
 
 //物理量に修正すること
 const float MAX_VELOCITY = 0.45;
@@ -101,34 +103,65 @@ int main(int argc, char** argv)
 
     tf::TransformListener listener;
 
+    ros::Publisher path_pub = nh.advertise<nav_msgs::Path>("/chibi18/local_path", 100);
+
     ros::Rate loop_rate(10);
 
-    geometry_msgs::Twist velocity;
+    geometry_msgs::TwistStamped velocity;
+    velocity.header.frame_id = "base_link";
+
 
     while(ros::ok()){
       if(odometry_subscribed && target_subscribed && !laser_data.ranges.empty()){
         calcurate_dynamic_window();
+
         listener.transformPoint("odom", _goal, goal);
-        evaluate(velocity);
+
+        evaluate(velocity.twist);
+        
+        //calculate local path
+        float dt = 0.01;
+        nav_msgs::Path local_path;
+        local_path.header.frame_id = "odom";
+        geometry_msgs::PoseStamped pose;
+        pose.pose = current_odometry.pose.pose;
+        local_path.poses.push_back(pose);
+        geometry_msgs::PoseStamped _pose;
+        _pose.header.frame_id = "base_link";
+        geometry_msgs::PoseStamped _pose_odom;
+        _pose_odom.header.frame_id = "odom";
+        for(float t=0;t<SIMULATE_TIME;t+=dt){
+           std::vector<geometry_msgs::PoseStamped>::iterator it = local_path.poses.end();    
+           it--;
+           _pose.pose.position.x += velocity.twist.linear.x * cos(velocity.twist.angular.z * t) * dt;
+           _pose.pose.position.y += velocity.twist.linear.x * sin(velocity.twist.angular.z * t) * dt;
+           _pose.pose.orientation.w = 1;
+           listener.transformPose("odom", _pose, _pose_odom);
+           pose.pose.position.x = /*it->pose.position.x +*/ _pose_odom.pose.position.x;
+           pose.pose.position.y = /*it->pose.position.y +*/ _pose_odom.pose.position.y;
+           local_path.poses.push_back(pose); 
+        }
+        path_pub.publish(local_path);
+
         float ratio = 0.25;
         float distance_to_goal = sqrt(pow(goal.point.x - current_odometry.pose.pose.position.x, 2) + pow(goal.point.y-current_odometry.pose.pose.position.y, 2));
         if(distance_to_goal < 0.5){
-          velocity.linear.x *= 2*distance_to_goal;
+          velocity.twist.linear.x *= 2*distance_to_goal;
         }
         if(distance_to_goal < 0.05){
-          velocity.angular.z *= 2*distance_to_goal;
+          velocity.twist.angular.z *= 2*distance_to_goal;
         }
-        velocity.linear.x *= ratio;
-        velocity.angular.z *= (1-ratio);
+        velocity.twist.linear.x *= ratio;
+        velocity.twist.angular.z *= (1-ratio);
 
         //stopの時
         if(!move_allowed){
-          velocity.linear.x = 0;
+          velocity.twist.linear.x = 0;
         }
 
-        std::cout << velocity << std::endl;
+        std::cout << velocity.twist << std::endl;
 
-        velocity_pub.publish(velocity);
+        velocity_pub.publish(velocity.twist);
         std::cout << "goal:" <<  goal.point.x <<" "<< goal.point.y << std::endl;
       }
       ros::spinOnce();
@@ -155,9 +188,9 @@ void evaluate(geometry_msgs::Twist& velocity)
       float _velocity = window_down + v * VELOCITY_RESOLUTION;
       float _omega = window_left + o * ANGULAR_VELOCITY_RESOLUTION; 
       e[v][o] = ALPHA * calcurate_heading(_omega, get_yaw(current_odometry.pose.pose.orientation), current_odometry.pose.pose.position) + BETA * calcurate_distance(_velocity, _omega) + GAMMA * calcurate_velocity(_velocity);
-      std::cout << e[v][o] << " ";
+      //std::cout << e[v][o] << " ";
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
   }
   int j = 0;
   int k = 0;
@@ -173,7 +206,8 @@ void evaluate(geometry_msgs::Twist& velocity)
   }
   velocity.linear.x = (window_down + j * VELOCITY_RESOLUTION) / MAX_VELOCITY;
   velocity.angular.z = (window_left + k * ANGULAR_VELOCITY_RESOLUTION) / MAX_ANGULAR_VELOCITY;
-  std::cout << current_odometry.pose.pose << std::endl;
+  //std::cout << current_odometry.pose.pose << std::endl;
+  std::cout << "(" << current_odometry.pose.pose.position.x << ", " << current_odometry.pose.pose.position.y << ", " << get_yaw(current_odometry.pose.pose.orientation) << ")" << std::endl;
   //std::cout << velocity.linear.x << " " << velocity.angular.z << std::endl;
   //std::cout << window_left << " " << ANGULAR_VELOCITY_RESOLUTION << std::endl;
   //std::cout << velocity.angular.z << std::endl;
@@ -219,7 +253,7 @@ float calcurate_distance(float v, float omega)
 
   const float LIMIT_DISTANCE = 1.5;
   float distance = LIMIT_DISTANCE;
-  for(int i=60;i<660;i++){//15~165
+  for(int i=60;i<660;i+=20){//15~165
     if(_laser_data.ranges[i] < LIMIT_DISTANCE){
       object.x = _laser_data.ranges[i] * sin(LASER_RESOLUTION * i);
       object.y = _laser_data.ranges[i] * cos(LASER_RESOLUTION * i) * -1.0;
