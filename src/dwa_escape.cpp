@@ -128,17 +128,11 @@ int main(int argc, char** argv)
         local_path.poses.push_back(pose);
         geometry_msgs::PoseStamped _pose;
         _pose.header.frame_id = "base_link";
-        geometry_msgs::PoseStamped _pose_odom;
-        _pose_odom.header.frame_id = "odom";
         for(float t=0;t<SIMULATE_TIME;t+=dt){
-           std::vector<geometry_msgs::PoseStamped>::iterator it = local_path.poses.end();    
-           it--;
            _pose.pose.position.x += velocity.twist.linear.x * cos(velocity.twist.angular.z * t) * dt;
            _pose.pose.position.y += velocity.twist.linear.x * sin(velocity.twist.angular.z * t) * dt;
            _pose.pose.orientation.w = 1;
-           listener.transformPose("odom", _pose, _pose_odom);
-           pose.pose.position.x = /*it->pose.position.x +*/ _pose_odom.pose.position.x;
-           pose.pose.position.y = /*it->pose.position.y +*/ _pose_odom.pose.position.y;
+           listener.transformPose("odom", _pose, pose);
            local_path.poses.push_back(pose); 
         }
         path_pub.publish(local_path);
