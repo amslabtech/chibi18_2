@@ -140,6 +140,7 @@ add_executable(stopper src/stopper.cpp)
 add_executable(changer src/changer.cpp)
 add_executable(dwa_escape src/dwa_escape.cpp)
 add_executable(laser_link src/laser_link.cpp)
+add_executable(global_planner src/global_planner.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -152,21 +153,24 @@ add_executable(laser_link src/laser_link.cpp)
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
- target_link_libraries(set_target
-   ${catkin_LIBRARIES}
- )
- target_link_libraries(stopper
-   ${catkin_LIBRARIES}
- )
- target_link_libraries(changer
-   ${catkin_LIBRARIES}
- )
- target_link_libraries(dwa_escape
-   ${catkin_LIBRARIES}
- )
- target_link_libraries(laser_link
-   ${catkin_LIBRARIES}
- )
+target_link_libraries(set_target
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(stopper
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(changer
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(dwa_escape
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(laser_link
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(global_planner
+  ${catkin_LIBRARIES}
+)
 
 #############
 ## Install ##
