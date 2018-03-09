@@ -9,6 +9,8 @@ geometry_msgs::PointStamped goal;
 nav_msgs::OccupancyGrid map;
 nav_msgs::Path global_path;
 
+nav_msgs::OccupancyGrid _cost_map;//for debug
+
 class Grid
 {
 public:
@@ -24,14 +26,25 @@ public:
   bool is_wall;
 };
 
-std::vector<std::vector<Grid> > cost_map;
+std::vector<Grid> cells;
 
 void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   map = *msg;
+  cells.resize(map.info.height*map.info.width);
+  for(int i=0;i<map.info.height*map.info.width;i++){
+    cells[i].is_wall = (map.data[i]!=0);
+    if(cells[i].is_wall){
+      cells[i].cost = 100;
+    }
+  }
+  _cost_map.header = map.header;
+  _cost_map.info = map.info;
+  _cost_map.data.resize(map.info.height*map.info.width);
 }
 
 int get_grid_data(float, float);
+int get_index(float, float);
 
 int main(int argc, char** argv)
 {
@@ -51,19 +64,12 @@ int main(int argc, char** argv)
 
   ros::Publisher path_pub = nh.advertise<nav_msgs::Path>("/chibi18/global_path", 100);
 
+  ros::Publisher cost_pub = nh.advertise<nav_msgs::OccupancyGrid>("/chibi18/cost_map", 100);
+
   ros::Rate loop_rate(10);
 
   global_path.header.frame_id = "map";
 
-  cost_map.resize(map.info.height);
-  for(int i=0;i<map.info.width;i++){
-    cost_map[i].resize(map.info.width);
-  }
-  for(int i=0;i<map.info.height;i++){
-    for(int j=0;j<map.info.width;j++){
-      cost_map[i][j].is_wall = (map.data[map.info.height*i+j]!=0);
-    }
-  }
 
   geometry_msgs::PoseStamped pose;
   pose.pose.position.x = 0;
@@ -75,10 +81,20 @@ int main(int argc, char** argv)
 
   while(ros::ok()){
     if(!map.data.empty()){
-      //std::cout << map.data.size() << std::endl;
+      std::cout << map.data.size() << std::endl;
       float x = -1.48;
       float y = -1.02;
-      std::cout << get_grid_data(x, y) << std::endl;
+      //std::cout << get_grid_data(x, y) << std::endl;
+      
+      //calculate AStar
+      int start_index = get_index(start.point.x, start.point.y);
+      int goal_index = get_index(goal.point.x, goal.point.y); 
+
+
+      for(int i=0;i<_cost_map.data.size();i++){
+        _cost_map.data[i] = cells[i].cost;
+      }
+      cost_pub.publish(_cost_map);
     }
     if(!global_path.poses.empty()){
       path_pub.publish(global_path);
@@ -91,6 +107,12 @@ int main(int argc, char** argv)
 
 int get_grid_data(float x, float y)
 {
+  int data = map.data[get_index(x, y)];
+  return data;
+}
+
+int get_index(float x, float y)
+{
   if(x > 0){
     x = ((int)(10*(2*x)+1))/20.0;
   }else{
@@ -101,7 +123,6 @@ int get_grid_data(float x, float y)
   }else{
     y = ((int)(10*(2*y)-1))/20.0;
   }
-  std::cout << x << ", " << y << std::endl;
-  int data = map.data[int((map.info.width*(y-map.info.origin.position.y)+(x-map.info.origin.position.x))/map.info.resolution)];
-  return data;
+  int index = int((map.info.width*(y-map.info.origin.position.y)+(x-map.info.origin.position.x))/map.info.resolution);
+  return index;
 }
