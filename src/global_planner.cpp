@@ -11,7 +11,7 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
   map = *msg;
 }
 
-int get_map_data(float, float);
+int get_grid_data(float, float);
 
 int main(int argc, char** argv)
 {
@@ -38,9 +38,9 @@ int main(int argc, char** argv)
   while(ros::ok()){
     if(!map.data.empty()){
       //std::cout << map.data.size() << std::endl;
-      float x = 1.00;
-      float y = -1.20;
-      std::cout << get_map_data(x, y) << std::endl;
+      float x = -1.48;
+      float y = -1.02;
+      std::cout << get_grid_data(x, y) << std::endl;
     }
     if(!global_path.poses.empty()){
       path_pub.publish(global_path);
@@ -51,8 +51,19 @@ int main(int argc, char** argv)
   return 0;
 }
 
-int get_map_data(float x, float y)
+int get_grid_data(float x, float y)
 {
+  if(x > 0){
+    x = ((int)(10*(2*x)+1))/20.0;
+  }else{
+    x = ((int)(10*(2*x)))/20.0;
+  }
+  if(y > 0){
+    y = ((int)(10*(2*y)))/20.0;
+  }else{
+    y = ((int)(10*(2*y)-1))/20.0;
+  }
+  std::cout << x << ", " << y << std::endl;
   int data = map.data[int((map.info.width*(y-map.info.origin.position.y)+(x-map.info.origin.position.x))/map.info.resolution)];
   return data;
 }
