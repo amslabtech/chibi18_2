@@ -1,10 +1,30 @@
 #include <ros/ros.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/Path.h>
+#include <geometry_msgs/PointStamped.h>
+
+geometry_msgs::PointStamped start;
+geometry_msgs::PointStamped goal;
 
 nav_msgs::OccupancyGrid map;
 nav_msgs::Path global_path;
 
+class Grid
+{
+public:
+  Grid(void)
+  {
+    is_wall = false;
+    cost = 1;
+  }
+
+  int cost;
+  int step;
+  int heuristic;
+  bool is_wall;
+};
+
+std::vector<std::vector<Grid> > cost_map;
 
 void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
@@ -17,7 +37,15 @@ int main(int argc, char** argv)
 {
   ros::init(argc, argv, "global_planner");
   ros::NodeHandle nh;
-  ros::NodeHandle local_nh;
+  ros::NodeHandle local_nh("~");
+
+  local_nh.getParam("START_X", start.point.x);
+  local_nh.getParam("START_Y", start.point.y);
+  local_nh.getParam("GOAL_X", goal.point.x);
+  local_nh.getParam("GOALY", goal.point.y);
+ 
+  start.header.frame_id = "map";
+  goal.header.frame_id = "map";
 
   ros::Subscriber map_sub = nh.subscribe("/map", 100, map_callback);
 
@@ -26,6 +54,16 @@ int main(int argc, char** argv)
   ros::Rate loop_rate(10);
 
   global_path.header.frame_id = "map";
+
+  cost_map.resize(map.info.height);
+  for(int i=0;i<map.info.width;i++){
+    cost_map[i].resize(map.info.width);
+  }
+  for(int i=0;i<map.info.height;i++){
+    for(int j=0;j<map.info.width;j++){
+      cost_map[i][j].is_wall = (map.data[map.info.height*i+j]!=0);
+    }
+  }
 
   geometry_msgs::PoseStamped pose;
   pose.pose.position.x = 0;

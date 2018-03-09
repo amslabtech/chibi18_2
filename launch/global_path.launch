@@ -1,7 +1,10 @@
 <launch>
 
   <node pkg="chibi18_control" name="global_planner" type="global_planner">
-
+    <param name="START_X" value="0.0"/>
+    <param name="START_Y" value="0.0"/>
+    <param name="GOAL_X" value="3.0"/>
+    <param name="GOAL_Y" value="0.0"/>
   </node>
 
 </launch>
