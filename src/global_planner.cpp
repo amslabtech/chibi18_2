@@ -19,11 +19,13 @@ public:
     is_wall = false;
     cost = 1;
     heuristic = -1;
+    step = 0;
   }
 
   int cost;
   int step;
   int heuristic;
+  int parent_index;
   bool is_wall;
 };
 
@@ -60,6 +62,22 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
   int start_index = get_index(start.point.x, start.point.y);
   int goal_index = get_index(goal.point.x, goal.point.y);
   calculate_heuristic(goal_index);
+  open_list.push_back(start_index);
+  while(!open_list.empty()){
+    int n_index = open_list[0];
+    int n = cells[n_index].step + cells[n_index].heuristic;
+    for(int i=0;i<open_list.size();i++){//openlist中で最小の要素を選択
+      if((cells[open_list[i]].step + cells[open_list[i]].heuristic) < n){
+        n_index = i;
+        n = cells[n_index].step + cells[n_index].heuristic;
+      }
+    }
+    if(n_index != goal_index){
+      close_list.push_back(n_index);//選んだものがゴールでなければcloselistへ
+    }else{
+      break;
+    }
+  }
 
   for(int i=0;i<map.info.height;i++){
     for(int j=0;j<map.info.width;j++){
@@ -107,9 +125,6 @@ int main(int argc, char** argv)
 
   while(ros::ok()){
     if(!map.data.empty()){
-      //calculate AStar
-      
-
       for(int i=0;i<_cost_map.data.size();i++){
         _cost_map.data[i] = cells[i].cost;
       }
