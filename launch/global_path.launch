@@ -1,0 +1,7 @@
+<launch>
+
+  <node pkg="chibi18_control" name="global_planner" type="global_planner">
+
+  </node>
+
+</launch>
