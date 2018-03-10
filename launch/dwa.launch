@@ -6,15 +6,7 @@
     <param name="Y" value="0.0"/>
   </node>
 
-  <node pkg="chibi18_control" name="local_planner" type="local_planner">
-    <param name="ALPHA" value="0.045"/>
-    <param name="BETA" value="1.00"/>
-    <param name="GAMMA" value="1.8"/>
-  </node>
-
-  <node pkg="chibi18_control" name="changer" type="changer"/>
-
-  <node pkg="chibi18_control" name="laser_link" type="laser_link"/>
+  <include file="$(find chibi18_control)/launch/local_planner.launch"/>
 
   <arg name="distance" default="0.5"/>
   <node pkg="chibi18_control" name="stopper" type="stopper">

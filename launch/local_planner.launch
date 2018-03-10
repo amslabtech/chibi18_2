@@ -1,0 +1,9 @@
+<launch>
+
+  <node pkg="chibi18_control" name="local_planner" type="local_planner">
+    <param name="ALPHA" value="0.045"/>
+    <param name="BETA" value="1.00"/>
+    <param name="GAMMA" value="1.8"/>
+  </node>
+
+</launch>
