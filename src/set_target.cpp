@@ -10,6 +10,7 @@ int main(int argc, char** argv)
   ros::NodeHandle local_nh("~");
 
   geometry_msgs::PoseStamped target;
+  target.pose.orientation.w = 1.0;
   local_nh.getParam("X", target.pose.position.x);
   local_nh.getParam("Y", target.pose.position.y);
   target.header.frame_id = "odom";

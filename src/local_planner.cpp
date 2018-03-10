@@ -111,6 +111,8 @@ int main(int argc, char** argv)
     geometry_msgs::TwistStamped velocity;
     velocity.header.frame_id = "base_link";
 
+    goal.pose.orientation.w = 1;
+    _goal.pose.orientation.w = 1;
 
     while(ros::ok()){
       if(odometry_subscribed && target_subscribed && !laser_data.ranges.empty()){
