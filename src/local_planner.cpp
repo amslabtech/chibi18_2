@@ -9,6 +9,7 @@
 #include <geometry_msgs/Pose2D.h>
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/TwistStamped.h>
+#include <geometry_msgs/PoseStamped.h>
 
 //物理量に修正すること
 const float MAX_VELOCITY = 0.45;
@@ -36,8 +37,8 @@ float window_down = -MAX_VELOCITY;
 nav_msgs::Odometry previous_odometry;
 nav_msgs::Odometry current_odometry;
 geometry_msgs::Twist velocity_odometry;
-geometry_msgs::PointStamped goal;
-geometry_msgs::PointStamped _goal;
+geometry_msgs::PoseStamped goal;
+geometry_msgs::PoseStamped _goal;
 sensor_msgs::LaserScan laser_data;
 sensor_msgs::LaserScan _laser_data;//計算用
 bool odometry_subscribed = false;
@@ -54,7 +55,7 @@ float get_larger(float, float);
 float get_smaller(float, float);
 float get_yaw(geometry_msgs::Quaternion);
 
-void target_callback(const geometry_msgs::PointStampedConstPtr& msg)
+void target_callback(const geometry_msgs::PoseStampedConstPtr& msg)
 {
   _goal = *msg;
   target_subscribed = true;
@@ -115,7 +116,7 @@ int main(int argc, char** argv)
       if(odometry_subscribed && target_subscribed && !laser_data.ranges.empty()){
         calcurate_dynamic_window();
 
-        listener.transformPoint("odom", _goal, goal);
+        listener.transformPose("odom", _goal, goal);
 
         evaluate(velocity.twist);
         
@@ -138,7 +139,7 @@ int main(int argc, char** argv)
         path_pub.publish(local_path);
 
         float ratio = 0.25;
-        float distance_to_goal = sqrt(pow(goal.point.x - current_odometry.pose.pose.position.x, 2) + pow(goal.point.y-current_odometry.pose.pose.position.y, 2));
+        float distance_to_goal = sqrt(pow(goal.pose.position.x - current_odometry.pose.pose.position.x, 2) + pow(goal.pose.position.y-current_odometry.pose.pose.position.y, 2));
         if(distance_to_goal < 0.5){
           velocity.twist.linear.x *= 2*distance_to_goal;
         }
@@ -156,7 +157,7 @@ int main(int argc, char** argv)
         std::cout << velocity.twist << std::endl;
 
         velocity_pub.publish(velocity.twist);
-        std::cout << "goal:" <<  goal.point.x <<" "<< goal.point.y << std::endl;
+        std::cout << "goal:" <<  goal.pose.position.x <<" "<< goal.pose.position.y << std::endl;
       }
       ros::spinOnce();
       loop_rate.sleep();
@@ -213,7 +214,7 @@ void evaluate(geometry_msgs::Twist& velocity)
 
 float calcurate_heading(float omega, float angle, geometry_msgs::Point point)
 {
-  float goal_angle = (atan2((goal.point.y-point.y), (goal.point.x-point.x)) - (angle + omega * INTERVAL));// / M_PI * 180;
+  float goal_angle = (atan2((goal.pose.position.y-point.y), (goal.pose.position.x-point.x)) - (angle + omega * INTERVAL));// / M_PI * 180;
   //std::cout << atan2(sin(goal_angle), cos(goal_angle)) / M_PI * 180<< "[deg]" << std::endl;
   float val = 180 - fabs(atan2(sin(goal_angle), cos(goal_angle))) / M_PI * 180;
   //std::cout << val << " ";

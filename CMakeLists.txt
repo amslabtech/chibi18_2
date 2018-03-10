@@ -138,7 +138,7 @@ include_directories(
 add_executable(set_target src/set_target.cpp)
 add_executable(stopper src/stopper.cpp)
 add_executable(changer src/changer.cpp)
-add_executable(dwa_escape src/dwa_escape.cpp)
+add_executable(local_planner src/local_planner.cpp)
 add_executable(laser_link src/laser_link.cpp)
 add_executable(global_planner src/global_planner.cpp)
 
@@ -162,7 +162,7 @@ target_link_libraries(stopper
 target_link_libraries(changer
   ${catkin_LIBRARIES}
 )
-target_link_libraries(dwa_escape
+target_link_libraries(local_planner
   ${catkin_LIBRARIES}
 )
 target_link_libraries(laser_link
