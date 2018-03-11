@@ -13,7 +13,12 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   tf
+  pcl_ros
+  cmake_modules
 )
+find_package(PCL REQUIRED)
+find_package(Eigen REQUIRED)
+
 #find_package(roomba_500driver_meiji REQUIRED)
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -120,6 +125,7 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${EIGEN_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library

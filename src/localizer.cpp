@@ -5,6 +5,13 @@
 #include <tf/transform_listener.h>
 #include <geometry_msgs/PoseArray.h>
 #include <sensor_msgs/LaserScan.h>
+#include <laser_geometry/laser_geometry.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/registration/icp.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl_ros/point_cloud.h>
+#include <pcl/point_types.h>
 
 class Particle
 {
