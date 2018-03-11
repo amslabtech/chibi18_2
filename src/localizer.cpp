@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <geometry_msgs/PoseArray.h>
 
@@ -72,12 +73,13 @@ int main(int argc, char** argv)
 
     ros::Publisher poses_pub= nh.advertise<geometry_msgs::PoseArray>("/chibi18/poses", 100);
 
+    tf::TransformBroadcaster map_broadcaster;
     ros::Rate loop_rate(10);
-
 
     while(ros::ok()){
       if(map_subscribed){
         poses_pub.publish(poses);
+        map_broadcaster.sendTransform(tf::StampedTransform(tf::Transform(tf::Quaternion(0, 0, 0, 1), tf::Vector3(0.0, 0.0, 0.0)), ros::Time::now(),"map", "odom"));
       }
 
       ros::spinOnce();
