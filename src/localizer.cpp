@@ -30,6 +30,7 @@ private:
 };
 
 int N;//number of partcles
+float SIGMA;//for calculating likelihood
 nav_msgs::OccupancyGrid map;
 bool map_subscribed = false;
 std::vector<Particle>  particles;
@@ -79,7 +80,7 @@ int main(int argc, char** argv)
     ros::NodeHandle local_nh("~");
 
     local_nh.getParam("N", N);
-    std::cout << N << std::endl;
+    local_nh.getParam("SIGMA", SIGMA);
 
     std::srand(time(NULL));
 
@@ -120,7 +121,8 @@ int main(int argc, char** argv)
           particles[i].move(dx, dy, dtheta);
           poses.poses[i] = particles[i].pose.pose;
         }
-        //measurement
+
+        //measurement & likelihood
         pcl::PointCloud<pcl::PointXYZ> pcl_from_scan;
         pcl::fromROSMsg(data_from_scan, pcl_from_scan);
         pcl::PointCloud<pcl::PointXYZ> pcl_from_map;
@@ -141,11 +143,18 @@ int main(int argc, char** argv)
           pcl::PointCloud<pcl::PointXYZ> output;
           icp.align(output);
 
-          Eigen::Matrix4d transformation_matrix = Eigen::Matrix4d::Identity ();
-          transformation_matrix = icp.getFinalTransformation ().cast<double>();
+          Eigen::Matrix4d m = Eigen::Matrix4d::Identity ();
+          m = icp.getFinalTransformation ().cast<double>();
+          float error = sqrt(pow(m(0, 3), 2) + pow(m(1, 3), 2));
+          particles[i].likelihood = exp(-pow(error / SIGMA, 2)/ 2.0);
         }
-
-        //likelihood
+        float sum = 0;
+        for(int i=0;i<N;i++){
+          sum += particles[i].likelihood;
+        }
+        for(int i=0;i<N;i++){
+          particles[i].likelihood /= sum;
+        }
 
         //resampling
 

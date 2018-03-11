@@ -2,6 +2,7 @@
 
   <node pkg="chibi18_control" name="localizer" type="localizer">
     <param name="N" value="1000"/>
+    <param name="SIGMA" value="5.0"/>
   </node>
 
 </launch>
