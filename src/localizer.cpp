@@ -8,20 +8,10 @@
 class Particle
 {
 public:
-  Particle(void)
-  {
-    pose.header.frame_id = "map";
-    pose.pose.position.x = 0;
-    pose.pose.position.y = 0;
-    quaternionTFToMsg(tf::createQuaternionFromYaw(0), pose.pose.orientation);
-  }
+  Particle(void);
 
-  void initialize(int width, int height, float resolution, geometry_msgs::Pose origin)
-  {
-    pose.pose.position.x = (rand() % width) * resolution + origin.position.x;
-    pose.pose.position.y = (rand() % height) * resolution + origin.position.y;
-    quaternionTFToMsg(tf::createQuaternionFromYaw((rand() % 360) * M_PI / 180.0 - M_PI), pose.pose.orientation);
-  }
+  void initialize(int, int, float, geometry_msgs::Pose);
+  void move(float, float, float);//"odom"から見た"base_link"の動き
 
   geometry_msgs::PoseStamped pose;
 
@@ -35,6 +25,8 @@ bool map_subscribed = false;
 std::vector<Particle>  particles;
 geometry_msgs::PoseArray poses;
 geometry_msgs::TransformStamped transform;
+tf::StampedTransform current_base_link_pose;
+tf::StampedTransform previous_base_link_pose;
 
 float get_yaw(geometry_msgs::Quaternion);
 int get_grid_data(float, float);
@@ -83,9 +75,17 @@ int main(int argc, char** argv)
     transform.header.frame_id = "map";
     transform.child_frame_id = "odom";
 
-    set_transform(42, 32, 0);
+    set_transform(42, 32, 0);//適当
+
     while(ros::ok()){
       if(map_subscribed){
+        //pridiction
+        //listener.lookupTransform("odom", "base_link", ros::Time(0), current_base_link_pose);
+        for(int i=0;i<particles.size();i++){
+          particles[i].move(0.01, 0.01, 0.05);
+          poses.poses[i] = particles[i].pose.pose;
+        }
+
         poses_pub.publish(poses);
         transform.header.stamp = ros::Time::now();
         map_broadcaster.sendTransform(transform);
@@ -138,4 +138,26 @@ void set_transform(float x, float y, float yaw)
   transform.transform.translation.z = 0;
   quaternionTFToMsg(tf::createQuaternionFromYaw(yaw), transform.transform.rotation);
  
+}
+
+Particle::Particle(void)
+{
+  pose.header.frame_id = "map";
+  pose.pose.position.x = 0;
+  pose.pose.position.y = 0;
+  quaternionTFToMsg(tf::createQuaternionFromYaw(0), pose.pose.orientation);
+}
+
+void Particle::initialize(int width, int height, float resolution, geometry_msgs::Pose origin)
+{
+  pose.pose.position.x = (rand() % width) * resolution + origin.position.x;
+  pose.pose.position.y = (rand() % height) * resolution + origin.position.y;
+  quaternionTFToMsg(tf::createQuaternionFromYaw((rand() % 360) * M_PI / 180.0 - M_PI), pose.pose.orientation);
+}
+
+void Particle::move(float x, float y, float yaw)
+{
+  pose.pose.position.x += x * cos(get_yaw(pose.pose.orientation)) - y * sin(get_yaw(pose.pose.orientation));
+  pose.pose.position.y += x * sin(get_yaw(pose.pose.orientation)) + y * cos(get_yaw(pose.pose.orientation));
+  quaternionTFToMsg(tf::createQuaternionFromYaw(get_yaw(pose.pose.orientation) + yaw), pose.pose.orientation); 
 }
