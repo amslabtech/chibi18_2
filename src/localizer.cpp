@@ -12,6 +12,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
+#include <sensor_msgs/PointCloud2.h>
 
 class Particle
 {
@@ -36,7 +37,10 @@ geometry_msgs::PoseArray poses;
 geometry_msgs::TransformStamped transform;
 tf::StampedTransform current_base_link_pose;
 tf::StampedTransform previous_base_link_pose;
-sensor_msgs::LaserScan data;
+sensor_msgs::LaserScan laser_data_from_scan;
+sensor_msgs::PointCloud2 data_from_scan;
+laser_geometry::LaserProjection projector;
+
 
 float get_yaw(geometry_msgs::Quaternion);
 int get_grid_data(float, float);
@@ -45,7 +49,8 @@ void set_transform(float, float, float);
 
 void laser_callback(const sensor_msgs::LaserScanConstPtr& msg)
 {
-  data = *msg;
+  laser_data_from_scan = *msg;
+  projector.projectLaser(laser_data_from_scan, data_from_scan); 
 }
 
 void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
@@ -95,7 +100,7 @@ int main(int argc, char** argv)
     set_transform(42, 32, 0);//適当
 
     while(ros::ok()){
-      if(map_subscribed){
+      if(map_subscribed && !laser_data_from_scan.ranges.empty()){
         //pridiction
         float dx, dy, dtheta;
         try{
@@ -116,6 +121,29 @@ int main(int argc, char** argv)
           poses.poses[i] = particles[i].pose.pose;
         }
         //measurement
+        pcl::PointCloud<pcl::PointXYZ> pcl_from_scan;
+        pcl::fromROSMsg(data_from_scan, pcl_from_scan);
+        pcl::PointCloud<pcl::PointXYZ> pcl_from_map;
+        sensor_msgs::PointCloud2 data_from_map;
+        sensor_msgs::LaserScan laser_data_from_map;
+        laser_data_from_map = laser_data_from_scan; 
+        for(int i=0;i<N;i++){
+          /*
+           * マップから点を取得する処理を書くこと
+           */
+          projector.projectLaser(laser_data_from_map, data_from_map);
+          pcl::fromROSMsg(data_from_map, pcl_from_scan);
+
+          pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+          icp.setInputSource(pcl_from_scan.makeShared());
+          icp.setInputTarget(pcl_from_map.makeShared());
+
+          pcl::PointCloud<pcl::PointXYZ> output;
+          icp.align(output);
+
+          Eigen::Matrix4d transformation_matrix = Eigen::Matrix4d::Identity ();
+          transformation_matrix = icp.getFinalTransformation ().cast<double>();
+        }
 
         //likelihood
 
