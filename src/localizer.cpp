@@ -18,10 +18,11 @@ class Particle
 public:
   Particle(void);
 
-  void initialize(int, int, float, geometry_msgs::Pose);
+  void initialize(int, int, float, geometry_msgs::Pose, int);
   void move(float, float, float);//"odom"から見た"base_link"の動き
 
   geometry_msgs::PoseStamped pose;
+  float likelihood;
 
 private:
 
@@ -54,7 +55,7 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
   for(int i=0;i<N;i++){
     Particle p;
     do{
-      p.initialize(map.info.width, map.info.height, map.info.resolution, map.info.origin);
+      p.initialize(map.info.width, map.info.height, map.info.resolution, map.info.origin, N);
     }while(get_grid_data(p.pose.pose.position.x, p.pose.pose.position.y) != 0);
     particles.push_back(p);
     poses.poses.push_back(p.pose.pose); 
@@ -96,9 +97,22 @@ int main(int argc, char** argv)
     while(ros::ok()){
       if(map_subscribed){
         //pridiction
-        //listener.lookupTransform("odom", "base_link", ros::Time(0), current_base_link_pose);
+        float dx, dy, dtheta;
+        try{
+          listener.lookupTransform("odom", "base_link", ros::Time(0), current_base_link_pose);
+          dx = current_base_link_pose.getOrigin().x() - previous_base_link_pose.getOrigin().x();
+          dy = current_base_link_pose.getOrigin().y() - previous_base_link_pose.getOrigin().y();
+          geometry_msgs::Quaternion qc, qp;
+          quaternionTFToMsg(current_base_link_pose.getRotation(), qc);
+          quaternionTFToMsg(previous_base_link_pose.getRotation(), qp);
+          dtheta = get_yaw(qc) - get_yaw(qp);
+        }catch(tf::TransformException &ex){
+          std::cout << ex.what() << std::endl;
+          continue;
+        }
         for(int i=0;i<particles.size();i++){
-          particles[i].move(0.01, 0.01, 0.05);//適当
+          //particles[i].move(0.01, 0.01, 0.05);//適当
+          particles[i].move(dx, dy, dtheta);
           poses.poses[i] = particles[i].pose.pose;
         }
         //measurement
@@ -169,11 +183,12 @@ Particle::Particle(void)
   quaternionTFToMsg(tf::createQuaternionFromYaw(0), pose.pose.orientation);
 }
 
-void Particle::initialize(int width, int height, float resolution, geometry_msgs::Pose origin)
+void Particle::initialize(int width, int height, float resolution, geometry_msgs::Pose origin, int N)
 {
   pose.pose.position.x = (rand() % width) * resolution + origin.position.x;
   pose.pose.position.y = (rand() % height) * resolution + origin.position.y;
   quaternionTFToMsg(tf::createQuaternionFromYaw((rand() % 360) * M_PI / 180.0 - M_PI), pose.pose.orientation);
+  likelihood = 1.0 / (float)N;
 }
 
 void Particle::move(float x, float y, float yaw)
