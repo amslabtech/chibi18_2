@@ -119,7 +119,6 @@ int main(int argc, char** argv)
         for(int i=0;i<particles.size();i++){
           //particles[i].move(0.01, 0.01, 0.05);//適当
           particles[i].move(dx, dy, dtheta);
-          poses.poses[i] = particles[i].pose.pose;
         }
 
         //measurement & likelihood
@@ -157,7 +156,27 @@ int main(int argc, char** argv)
         }
 
         //resampling
-
+        std::vector<Particle> new_particles;
+        int max_index = 0;
+        for(int i=0;i<N;i++){
+          if(particles[i].likelihood > particles[max_index].likelihood){
+            max_index = i;
+          }
+        }
+        float beta = 0;
+        int index = rand() % N;
+        for(int i=0;i<N;i++){
+          beta += (rand() % N) / (float)N * 2 * particles[max_index].likelihood;
+          while(beta > particles[index].likelihood){
+            beta -= particles[index].likelihood;
+            index = (1 + index) % N;
+          }
+          new_particles.push_back(particles[index]);
+        }
+        particles = new_particles;
+        for(int i=0;i<N;i++){
+          poses.poses[i] = particles[i].pose.pose;
+        }
         poses_pub.publish(poses);
         transform.header.stamp = ros::Time::now();
         map_broadcaster.sendTransform(transform);
