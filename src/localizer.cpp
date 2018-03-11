@@ -4,6 +4,7 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <geometry_msgs/PoseArray.h>
+#include <sensor_msgs/LaserScan.h>
 
 class Particle
 {
@@ -27,11 +28,17 @@ geometry_msgs::PoseArray poses;
 geometry_msgs::TransformStamped transform;
 tf::StampedTransform current_base_link_pose;
 tf::StampedTransform previous_base_link_pose;
+sensor_msgs::LaserScan data;
 
 float get_yaw(geometry_msgs::Quaternion);
 int get_grid_data(float, float);
 int get_index(float, float);
 void set_transform(float, float, float);
+
+void laser_callback(const sensor_msgs::LaserScanConstPtr& msg)
+{
+  data = *msg;
+}
 
 void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
@@ -67,6 +74,8 @@ int main(int argc, char** argv)
 
     ros::Publisher poses_pub= nh.advertise<geometry_msgs::PoseArray>("/chibi18/poses", 100);
 
+    ros::Subscriber laser_sub = nh.subscribe("/scan", 100, laser_callback);
+
     tf::TransformBroadcaster map_broadcaster;
     tf::TransformListener listener;
 
@@ -82,9 +91,14 @@ int main(int argc, char** argv)
         //pridiction
         //listener.lookupTransform("odom", "base_link", ros::Time(0), current_base_link_pose);
         for(int i=0;i<particles.size();i++){
-          particles[i].move(0.01, 0.01, 0.05);
+          particles[i].move(0.01, 0.01, 0.05);//適当
           poses.poses[i] = particles[i].pose.pose;
         }
+        //measurement
+
+        //likelihood
+
+        //resampling
 
         poses_pub.publish(poses);
         transform.header.stamp = ros::Time::now();
