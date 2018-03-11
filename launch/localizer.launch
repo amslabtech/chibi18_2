@@ -1,0 +1,6 @@
+<launch>
+
+  <node pkg="chibi18_control" name="localizer" type="localizer">
+  </node>
+
+</launch>
