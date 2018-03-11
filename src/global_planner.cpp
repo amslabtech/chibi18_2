@@ -286,7 +286,7 @@ int get_index(float x, float y)
     y = ((int)(10*(2*y)-1))/20.0;
   }
   int index = int((map.info.width*(y-map.info.origin.position.y)+(x-map.info.origin.position.x))/map.info.resolution);
-  std::cout << index << " " << x << " " << y <<std::endl;
+  //std::cout << index << " " << x << " " << y <<std::endl;
   return index;
 }
 
