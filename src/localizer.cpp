@@ -34,10 +34,12 @@ nav_msgs::OccupancyGrid map;
 bool map_subscribed = false;
 std::vector<Particle>  particles;
 geometry_msgs::PoseArray poses;
+geometry_msgs::TransformStamped transform;
 
 float get_yaw(geometry_msgs::Quaternion);
 int get_grid_data(float, float);
 int get_index(float, float);
+void set_transform(float, float, float);
 
 void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
@@ -74,12 +76,19 @@ int main(int argc, char** argv)
     ros::Publisher poses_pub= nh.advertise<geometry_msgs::PoseArray>("/chibi18/poses", 100);
 
     tf::TransformBroadcaster map_broadcaster;
+    tf::TransformListener listener;
+
     ros::Rate loop_rate(10);
 
+    transform.header.frame_id = "map";
+    transform.child_frame_id = "odom";
+
+    set_transform(42, 32, 0);
     while(ros::ok()){
       if(map_subscribed){
         poses_pub.publish(poses);
-        map_broadcaster.sendTransform(tf::StampedTransform(tf::Transform(tf::Quaternion(0, 0, 0, 1), tf::Vector3(0.0, 0.0, 0.0)), ros::Time::now(),"map", "odom"));
+        transform.header.stamp = ros::Time::now();
+        map_broadcaster.sendTransform(transform);
       }
 
       ros::spinOnce();
@@ -122,3 +131,11 @@ int get_index(float x, float y)
   return index;
 }
 
+void set_transform(float x, float y, float yaw)
+{
+  transform.transform.translation.x = x;
+  transform.transform.translation.y = y;
+  transform.transform.translation.z = 0;
+  quaternionTFToMsg(tf::createQuaternionFromYaw(yaw), transform.transform.rotation);
+ 
+}
