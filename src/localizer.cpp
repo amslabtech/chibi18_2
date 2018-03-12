@@ -183,7 +183,7 @@ int main(int argc, char** argv)
           m = icp.getFinalTransformation ().cast<double>();
           float position_error = sqrt(pow(m(0, 3), 2) + pow(m(1, 3), 2));
           float orientation_error = acos(m(0));
-          particles[i].likelihood = exp(-pow(error / POSITION_SIGMA, 2) / 2.0) exp(-pow(orientation_error / ORIENTATION_SIGMA, 2) / 2.0);
+          particles[i].likelihood = exp(-pow(position_error / POSITION_SIGMA, 2) / 2.0) + exp(-pow(orientation_error / ORIENTATION_SIGMA, 2) / 2.0);
         }
         */
         float sum = 0;
