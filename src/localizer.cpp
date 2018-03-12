@@ -112,6 +112,8 @@ int main(int argc, char** argv)
 
     ros::Subscriber laser_sub = nh.subscribe("/scan", 100, laser_callback);
 
+    ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/chibi18/estimated_pose", 100);
+
     tf::TransformBroadcaster map_broadcaster;
     tf::TransformListener listener;
 
@@ -218,6 +220,18 @@ int main(int argc, char** argv)
         poses_pub.publish(poses);
         transform.header.stamp = ros::Time::now();
         map_broadcaster.sendTransform(transform);
+
+        geometry_msgs::PoseStamped estimated_pose;
+        estimated_pose.header.frame_id = "map";
+        for(int i=0;i<N;i++){
+          estimated_pose.pose.position.x += particles[i].likelihood * particles[i].pose.pose.position.x; 
+          estimated_pose.pose.position.y += particles[i].likelihood * particles[i].pose.pose.position.y; 
+          estimated_pose.pose.orientation.x += particles[i].likelihood * particles[i].pose.pose.orientation.x; 
+          estimated_pose.pose.orientation.y += particles[i].likelihood * particles[i].pose.pose.orientation.y; 
+          estimated_pose.pose.orientation.z += particles[i].likelihood * particles[i].pose.pose.orientation.z; 
+          estimated_pose.pose.orientation.w += particles[i].likelihood * particles[i].pose.pose.orientation.w; 
+        }
+        pose_pub.publish(estimated_pose);
       }
 
       ros::spinOnce();
