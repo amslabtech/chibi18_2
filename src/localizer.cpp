@@ -128,12 +128,12 @@ int main(int argc, char** argv)
       if(map_subscribed/* && !laser_data_from_scan.ranges.empty()*/){
         //pridiction
         float dx, dy, dtheta;
+        geometry_msgs::Quaternion qc, qp;
         /*
         try{
           listener.lookupTransform("odom", "base_link", ros::Time(0), current_base_link_pose);
           dx = current_base_link_pose.getOrigin().x() - previous_base_link_pose.getOrigin().x();
           dy = current_base_link_pose.getOrigin().y() - previous_base_link_pose.getOrigin().y();
-          geometry_msgs::Quaternion qc, qp;
           quaternionTFToMsg(current_base_link_pose.getRotation(), qc);
           quaternionTFToMsg(previous_base_link_pose.getRotation(), qp);
           dtheta = get_yaw(qc) - get_yaw(qp);
@@ -218,22 +218,36 @@ int main(int argc, char** argv)
           poses.poses[i] = particles[i].pose.pose;
         }
         poses_pub.publish(poses);
-        transform.header.stamp = ros::Time::now();
-        map_broadcaster.sendTransform(transform);
-
+        
+        //推定値の算出
         geometry_msgs::PoseStamped estimated_pose;
         estimated_pose.header.frame_id = "map";
         for(int i=0;i<N;i++){
           estimated_pose.pose.position.x += particles[i].likelihood * particles[i].pose.pose.position.x; 
           estimated_pose.pose.position.y += particles[i].likelihood * particles[i].pose.pose.position.y; 
-          estimated_pose.pose.orientation.x += particles[i].likelihood * particles[i].pose.pose.orientation.x; 
-          estimated_pose.pose.orientation.y += particles[i].likelihood * particles[i].pose.pose.orientation.y; 
-          estimated_pose.pose.orientation.z += particles[i].likelihood * particles[i].pose.pose.orientation.z; 
-          estimated_pose.pose.orientation.w += particles[i].likelihood * particles[i].pose.pose.orientation.w; 
+          tf::Quaternion temp_tf_q = tf::createQuaternionFromYaw((1 + particles[i].likelihood) * get_yaw(particles[i].pose.pose.orientation));
+          geometry_msgs::Quaternion temp_g_q;
+          quaternionTFToMsg(temp_tf_q, temp_g_q);
+          estimated_pose.pose.orientation = temp_g_q;
         }
         pose_pub.publish(estimated_pose);
-      }
 
+        //odomの補正を計算
+        transform.header.stamp = ros::Time::now();
+        /*
+        transform.transform.translation.x += estimated_pose.pose.position.x - current_base_link_pose.getOrigin().x();
+        transform.transform.translation.y += estimated_pose.pose.position.y - current_base_link_pose.getOrigin().y();
+        float d_theta = get_yaw(estimated_pose.pose.orientation) - get_yaw(qc);
+        tf::Quaternion tf_q = tf::createQuaternionFromYaw(d_theta);
+        geometry_msgs::Quaternion g_q;
+        quaternionTFToMsg(tf_q, g_q);
+        transform.transform.rotation.x += g_q.x;
+        transform.transform.rotation.y += g_q.y;
+        transform.transform.rotation.z += g_q.z;
+        transform.transform.rotation.w += g_q.w;
+        */
+        map_broadcaster.sendTransform(transform);
+      }
       ros::spinOnce();
       loop_rate.sleep();
     }
