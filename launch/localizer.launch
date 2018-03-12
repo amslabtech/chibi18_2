@@ -9,6 +9,8 @@
    <arg name="_INIT_X" default="42"/>
    <arg name="_INIT_Y" default="32"/>
    <arg name="_INIT_YAW" default="0.0"/>
+   <arg name="ODOM_XY_NOISE" default="0.01"/>
+   <arg name="ODOM_YAW_NOISE" default="0.01"/>
 
   <node pkg="chibi18_control" name="localizer" type="localizer" output="screen">
     <param name="N" value="$(arg PARTICLE_N)"/>
@@ -20,6 +22,8 @@
     <param name="INIT_X" value="$(arg _INIT_X)"/>
     <param name="INIT_Y" value="$(arg _INIT_Y)"/>
     <param name="INIT_YAW" value="$(arg _INIT_YAW)"/>
+    <param name="ODOM_XY_NOISE" value="$(arg ODOM_XY_NOISE)"/>
+    <param name="ODOM_YAW_NOISE" value="$(arg ODOM_YAW_NOISE)"/>
   </node>
 
 </launch>

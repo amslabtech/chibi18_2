@@ -40,6 +40,8 @@ float init_yaw_cov;
 float init_x;
 float init_y;
 float init_yaw;
+float odom_yaw_noise;
+float odom_xy_noise;
 nav_msgs::OccupancyGrid map;
 bool map_subscribed = false;
 std::vector<Particle>  particles;
@@ -99,6 +101,8 @@ int main(int argc, char** argv)
     local_nh.getParam("INIT_X", init_x);
     local_nh.getParam("INIT_Y", init_y);
     local_nh.getParam("INIT_YAW", init_yaw);
+    local_nh.getParam("ODOM_XY_NOISE", odom_xy_noise);
+    local_nh.getParam("ODOM_YAW_NOISE", odom_yaw_noise);
 
     std::srand(time(NULL));
 
@@ -179,6 +183,7 @@ int main(int argc, char** argv)
           float orientation_error = acos(m(0));
           particles[i].likelihood = exp(-pow(error / POSITION_SIGMA, 2) / 2.0) exp(-pow(orientation_error / ORIENTATION_SIGMA, 2) / 2.0);
         }
+        */
         float sum = 0;
         for(int i=0;i<N;i++){
           sum += particles[i].likelihood;
@@ -206,7 +211,7 @@ int main(int argc, char** argv)
           new_particles.push_back(particles[index]);
         }
         particles = new_particles;
-        */
+        
         for(int i=0;i<N;i++){
           poses.poses[i] = particles[i].pose.pose;
         }
@@ -285,7 +290,9 @@ void Particle::initialize(int width, int height, float resolution, geometry_msgs
 
 void Particle::move(float x, float y, float yaw)
 {
-  pose.pose.position.x += x * cos(get_yaw(pose.pose.orientation)) - y * sin(get_yaw(pose.pose.orientation));
-  pose.pose.position.y += x * sin(get_yaw(pose.pose.orientation)) + y * cos(get_yaw(pose.pose.orientation));
-  quaternionTFToMsg(tf::createQuaternionFromYaw(get_yaw(pose.pose.orientation) + yaw), pose.pose.orientation); 
+  std::normal_distribution<> rand_xy(0, odom_xy_noise);
+  pose.pose.position.x += x * cos(get_yaw(pose.pose.orientation)) - y * sin(get_yaw(pose.pose.orientation)) + rand_xy(mt);
+  pose.pose.position.y += x * sin(get_yaw(pose.pose.orientation)) + y * cos(get_yaw(pose.pose.orientation)) + rand_xy(mt);
+  std::normal_distribution<> rand_yaw(0, odom_yaw_noise);
+  quaternionTFToMsg(tf::createQuaternionFromYaw(get_yaw(pose.pose.orientation) + yaw + rand_yaw(mt)), pose.pose.orientation); 
 }
