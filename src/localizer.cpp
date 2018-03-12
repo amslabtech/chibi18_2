@@ -14,6 +14,8 @@
 #include <pcl/point_types.h>
 #include <sensor_msgs/PointCloud2.h>
 
+#include <random>
+
 class Particle
 {
 public:
@@ -31,6 +33,12 @@ private:
 
 int N;//number of partcles
 float SIGMA;//for calculating likelihood
+float init_x_cov;
+float init_y_cov;
+float init_yaw_cov;
+float init_x;
+float init_y;
+float init_yaw;
 nav_msgs::OccupancyGrid map;
 bool map_subscribed = false;
 std::vector<Particle>  particles;
@@ -42,6 +50,9 @@ sensor_msgs::LaserScan laser_data_from_scan;
 sensor_msgs::PointCloud2 data_from_scan;
 laser_geometry::LaserProjection projector;
 
+//パーティクル配置用
+std::random_device rnd;
+std::mt19937 mt(rnd()); 
 
 float get_yaw(geometry_msgs::Quaternion);
 int get_grid_data(float, float);
@@ -57,7 +68,6 @@ void laser_callback(const sensor_msgs::LaserScanConstPtr& msg)
 void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   map = *msg;
-  
   for(int i=0;i<N;i++){
     Particle p;
     do{
@@ -81,6 +91,12 @@ int main(int argc, char** argv)
 
     local_nh.getParam("N", N);
     local_nh.getParam("SIGMA", SIGMA);
+    local_nh.getParam("INIT_X_COVARIANCE", init_x_cov);
+    local_nh.getParam("INIT_Y_COVARIANCE", init_y_cov);
+    local_nh.getParam("INIT_YAW_COVARIANCE", init_yaw_cov);
+    local_nh.getParam("INIT_X", init_x);
+    local_nh.getParam("INIT_Y", init_y);
+    local_nh.getParam("INIT_YAW", init_yaw);
 
     std::srand(time(NULL));
 
@@ -98,12 +114,13 @@ int main(int argc, char** argv)
     transform.header.frame_id = "map";
     transform.child_frame_id = "odom";
 
-    set_transform(42, 32, 0);//適当
+    set_transform(init_x, init_y, init_yaw);//適当
 
     while(ros::ok()){
-      if(map_subscribed && !laser_data_from_scan.ranges.empty()){
+      if(map_subscribed/* && !laser_data_from_scan.ranges.empty()*/){
         //pridiction
         float dx, dy, dtheta;
+        /*
         try{
           listener.lookupTransform("odom", "base_link", ros::Time(0), current_base_link_pose);
           dx = current_base_link_pose.getOrigin().x() - previous_base_link_pose.getOrigin().x();
@@ -112,15 +129,18 @@ int main(int argc, char** argv)
           quaternionTFToMsg(current_base_link_pose.getRotation(), qc);
           quaternionTFToMsg(previous_base_link_pose.getRotation(), qp);
           dtheta = get_yaw(qc) - get_yaw(qp);
+          previous_base_link_pose = current_base_link_pose; 
         }catch(tf::TransformException &ex){
           std::cout << ex.what() << std::endl;
           continue;
         }
+        */
         for(int i=0;i<particles.size();i++){
-          //particles[i].move(0.01, 0.01, 0.05);//適当
-          particles[i].move(dx, dy, dtheta);
+          particles[i].move(0.01, 0.01, 0.05);//適当
+          //particles[i].move(dx, dy, dtheta);
         }
 
+        /*
         //measurement & likelihood
         pcl::PointCloud<pcl::PointXYZ> pcl_from_scan;
         pcl::fromROSMsg(data_from_scan, pcl_from_scan);
@@ -129,9 +149,9 @@ int main(int argc, char** argv)
         sensor_msgs::LaserScan laser_data_from_map;
         laser_data_from_map = laser_data_from_scan; 
         for(int i=0;i<N;i++){
-          /*
-           * マップから点を取得する処理を書くこと
-           */
+          //
+          // マップから点を取得する処理を書くこと
+          //
           projector.projectLaser(laser_data_from_map, data_from_map);
           pcl::fromROSMsg(data_from_map, pcl_from_scan);
 
@@ -174,6 +194,7 @@ int main(int argc, char** argv)
           new_particles.push_back(particles[index]);
         }
         particles = new_particles;
+        */
         for(int i=0;i<N;i++){
           poses.poses[i] = particles[i].pose.pose;
         }
@@ -241,9 +262,12 @@ Particle::Particle(void)
 
 void Particle::initialize(int width, int height, float resolution, geometry_msgs::Pose origin, int N)
 {
-  pose.pose.position.x = (rand() % width) * resolution + origin.position.x;
-  pose.pose.position.y = (rand() % height) * resolution + origin.position.y;
-  quaternionTFToMsg(tf::createQuaternionFromYaw((rand() % 360) * M_PI / 180.0 - M_PI), pose.pose.orientation);
+  std::normal_distribution<> rand_x(init_x, init_x_cov);
+  pose.pose.position.x = rand_x(mt);
+  std::normal_distribution<> rand_y(init_y, init_y_cov);
+  pose.pose.position.y = rand_y(mt);
+  std::normal_distribution<> rand_yaw(init_yaw, init_yaw_cov);
+  quaternionTFToMsg(tf::createQuaternionFromYaw(rand_yaw(mt)), pose.pose.orientation);
   likelihood = 1.0 / (float)N;
 }
 

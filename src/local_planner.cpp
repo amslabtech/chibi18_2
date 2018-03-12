@@ -67,7 +67,7 @@ void odometry_callback(const nav_msgs::OdometryConstPtr& msg)
   current_odometry = *msg;
   velocity_odometry.linear.x = sqrt(pow(current_odometry.pose.pose.position.x-previous_odometry.pose.pose.position.x, 2) + pow(current_odometry.pose.pose.position.y-previous_odometry.pose.pose.position.y, 2))/INTERVAL;
   velocity_odometry.angular.z = (get_yaw(current_odometry.pose.pose.orientation)-get_yaw(previous_odometry.pose.pose.orientation))/INTERVAL;
-  if(!isnan(velocity_odometry.angular.z)){
+  if(!std::isnan(velocity_odometry.angular.z)){
     odometry_subscribed = true;
   }
 }
