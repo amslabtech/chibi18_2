@@ -152,6 +152,15 @@ int main(int argc, char** argv)
           //
           // マップから点を取得する処理を書くこと
           //
+          for(float theta=0;theta<M_PI;theta+=M_PI/720.0){
+            if(theta<M_PI/2.0){
+              
+            }else if(theta>M_PI/2.0){
+
+            }else{
+
+            }
+          }
           projector.projectLaser(laser_data_from_map, data_from_map);
           pcl::fromROSMsg(data_from_map, pcl_from_scan);
 
