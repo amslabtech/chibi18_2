@@ -1,7 +1,8 @@
 <launch>
    
    <arg name="PARTICLE_N" default="10"/>
-   <arg name="RESAMPLE_SIGMA" default="5.0"/>
+   <arg name="POSITION_SIGMA" default="5.0"/>
+   <arg name="ORIENTATION_SIGMA" default="0.3"/>
    <arg name="_INIT_X_COVARIANCE" default="0.5"/>
    <arg name="_INIT_Y_COVARIANCE" default="0.5"/>
    <arg name="_INIT_YAW_COVARIANCE" default="0.5"/>
@@ -11,7 +12,8 @@
 
   <node pkg="chibi18_control" name="localizer" type="localizer" output="screen">
     <param name="N" value="$(arg PARTICLE_N)"/>
-    <param name="SIGMA" value="$(arg RESAMPLE_SIGMA)"/>
+    <param name="POSITION_SIGMA" value="$(arg POSITION_SIGMA)"/>
+    <param name="ORIENTATION_SIGMA" value="$(arg ORIENTATION_SIGMA)"/>
     <param name="INIT_X_COVARIANCE" value="$(arg _INIT_X_COVARIANCE)"/>
     <param name="INIT_Y_COVARIANCE" value="$(arg _INIT_Y_COVARIANCE)"/>
     <param name="INIT_YAW_COVARIANCE" value="$(arg _INIT_YAW_COVARIANCE)"/>

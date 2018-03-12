@@ -32,7 +32,8 @@ private:
 };
 
 int N;//number of partcles
-float SIGMA;//for calculating likelihood
+float POSITION_SIGMA;
+float ORIENTATION_SIGMA;
 float init_x_cov;
 float init_y_cov;
 float init_yaw_cov;
@@ -90,7 +91,8 @@ int main(int argc, char** argv)
     ros::NodeHandle local_nh("~");
 
     local_nh.getParam("N", N);
-    local_nh.getParam("SIGMA", SIGMA);
+    local_nh.getParam("POSISION_SIGMA", POSITION_SIGMA);
+    local_nh.getParam("ORIENTATION_SIGMA", ORIENTATION_SIGMA);
     local_nh.getParam("INIT_X_COVARIANCE", init_x_cov);
     local_nh.getParam("INIT_Y_COVARIANCE", init_y_cov);
     local_nh.getParam("INIT_YAW_COVARIANCE", init_yaw_cov);
@@ -173,8 +175,9 @@ int main(int argc, char** argv)
 
           Eigen::Matrix4d m = Eigen::Matrix4d::Identity ();
           m = icp.getFinalTransformation ().cast<double>();
-          float error = sqrt(pow(m(0, 3), 2) + pow(m(1, 3), 2));
-          particles[i].likelihood = exp(-pow(error / SIGMA, 2)/ 2.0);
+          float position_error = sqrt(pow(m(0, 3), 2) + pow(m(1, 3), 2));
+          float orientation_error = acos(m(0));
+          particles[i].likelihood = exp(-pow(error / POSITION_SIGMA, 2) / 2.0) exp(-pow(orientation_error / ORIENTATION_SIGMA, 2) / 2.0);
         }
         float sum = 0;
         for(int i=0;i<N;i++){
