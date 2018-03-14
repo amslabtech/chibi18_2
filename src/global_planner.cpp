@@ -110,6 +110,14 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
           cells[_index].parent_index = n_index;
           open_list.push_back(_index);
         }
+      }else if(std::find(open_list.begin(), open_list.end(), _index) != open_list.end()){
+        if(cells[n_index].step + 1 < cells[_index].step){
+          cells[_index].parent_index = n_index;
+        } 
+      }else if(std::find(close_list.begin(), close_list.end(), _index) != close_list.end()){
+        if(cells[n_index].step + 1 < cells[_index].step){
+          cells[_index].parent_index = n_index;
+        } 
       }
     }
     if(_j+1<map.info.width){
@@ -121,7 +129,16 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
           cells[_index].parent_index = n_index;
           open_list.push_back(_index);
         }
+      }else if(std::find(open_list.begin(), open_list.end(), _index) != open_list.end()){
+        if(cells[n_index].step + 1 < cells[_index].step){
+          cells[_index].parent_index = n_index;
+        } 
+      }else if(std::find(close_list.begin(), close_list.end(), _index) != close_list.end()){
+        if(cells[n_index].step + 1 < cells[_index].step){
+          cells[_index].parent_index = n_index;
+        } 
       }
+
     }
     if(_i+1<map.info.height){
       _index = _j*map.info.width+(_i+1);//i+1, j
@@ -132,7 +149,16 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
           cells[_index].parent_index = n_index;
           open_list.push_back(_index);
         }
+      }else if(std::find(open_list.begin(), open_list.end(), _index) != open_list.end()){
+        if(cells[n_index].step + 1 < cells[_index].step){
+          cells[_index].parent_index = n_index;
+        } 
+      }else if(std::find(close_list.begin(), close_list.end(), _index) != close_list.end()){
+        if(cells[n_index].step + 1 < cells[_index].step){
+          cells[_index].parent_index = n_index;
+        } 
       }
+
       if(_j-1>=0){
         _index = (_j-1)*map.info.width+(_i+1);//i+1, j-1
         if((std::find(open_list.begin(), open_list.end(), _index) == open_list.end()) && (std::find(close_list.begin(), close_list.end(), _index) == close_list.end())){
@@ -142,7 +168,16 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
             cells[_index].parent_index = n_index;
             open_list.push_back(_index);
           }
+        }else if(std::find(open_list.begin(), open_list.end(), _index) != open_list.end()){
+          if(cells[n_index].step + 1 < cells[_index].step){
+            cells[_index].parent_index = n_index;
+          } 
+        }else if(std::find(close_list.begin(), close_list.end(), _index) != close_list.end()){
+          if(cells[n_index].step + 1 < cells[_index].step){
+            cells[_index].parent_index = n_index;
+          } 
         }
+
       }
       if(_j+1<map.info.width){
         _index = (_j+1)*map.info.width+(_i+1);//i+1, j+1
@@ -153,7 +188,16 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
             cells[_index].parent_index = n_index;
             open_list.push_back(_index);
           }
+        }else if(std::find(open_list.begin(), open_list.end(), _index) != open_list.end()){
+          if(cells[n_index].step + 1 < cells[_index].step){
+            cells[_index].parent_index = n_index;
+          } 
+        }else if(std::find(close_list.begin(), close_list.end(), _index) != close_list.end()){
+          if(cells[n_index].step + 1 < cells[_index].step){
+            cells[_index].parent_index = n_index;
+          } 
         }
+
       }
     }
     if(_i-1>=0){
@@ -165,7 +209,16 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
           cells[_index].parent_index = n_index;
           open_list.push_back(_index);
         }
+      }else if(std::find(open_list.begin(), open_list.end(), _index) != open_list.end()){
+        if(cells[n_index].step + 1 < cells[_index].step){
+          cells[_index].parent_index = n_index;
+        } 
+      }else if(std::find(close_list.begin(), close_list.end(), _index) != close_list.end()){
+        if(cells[n_index].step + 1 < cells[_index].step){
+          cells[_index].parent_index = n_index;
+        } 
       }
+
       if(_j-1>=0){
         _index = (_j-1)*map.info.width+(_i-1);//i-1, j-1
         if((std::find(open_list.begin(), open_list.end(), _index) == open_list.end()) && (std::find(close_list.begin(), close_list.end(), _index) == close_list.end())){
@@ -175,7 +228,16 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
             cells[_index].parent_index = n_index;
             open_list.push_back(_index);
           }
+        }else if(std::find(open_list.begin(), open_list.end(), _index) != open_list.end()){
+          if(cells[n_index].step + 1 < cells[_index].step){
+            cells[_index].parent_index = n_index;
+          } 
+        }else if(std::find(close_list.begin(), close_list.end(), _index) != close_list.end()){
+          if(cells[n_index].step + 1 < cells[_index].step){
+            cells[_index].parent_index = n_index;
+          } 
         }
+
       }
       if(_j+1<map.info.width){
         _index = (_j+1)*map.info.width+(_i-1);//i-1, j+1
@@ -186,7 +248,16 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
             cells[_index].parent_index = n_index;
             open_list.push_back(_index);
           }
+        }else if(std::find(open_list.begin(), open_list.end(), _index) != open_list.end()){
+          if(cells[n_index].step + 1 < cells[_index].step){
+            cells[_index].parent_index = n_index;
+          } 
+        }else if(std::find(close_list.begin(), close_list.end(), _index) != close_list.end()){
+          if(cells[n_index].step + 1 < cells[_index].step){
+            cells[_index].parent_index = n_index;
+          } 
         }
+
       }
     }
   }
