@@ -1,10 +1,11 @@
 #include <ros/ros.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/Path.h>
-#include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <tf/tf.h>
 
-geometry_msgs::PointStamped start;
-geometry_msgs::PointStamped goal;
+geometry_msgs::PoseStamped start;
+geometry_msgs::PoseStamped goal;
 
 nav_msgs::OccupancyGrid map;
 nav_msgs::Path global_path;
@@ -41,8 +42,9 @@ std::vector<int> close_list;
 
 int get_grid_data(float, float);
 int get_index(float, float);
-//void calculate_heuristic(int);
 int get_heuristic(int, int);
+void calculate_aster(geometry_msgs::PoseStamped&, geometry_msgs::PoseStamped&);
+float get_yaw(geometry_msgs::Quaternion);
 
 void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
@@ -60,23 +62,101 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
   _cost_map.header = map.header;
   _cost_map.info = map.info;
   _cost_map.data.resize(map.info.height*map.info.width);
-  /*
-  for(int i=0;i<map.info.height;i++){
-    for(int j=0;j<map.info.width;j++){
-      std::cout << cells[j*map.info.width+i].is_wall << " ";
+
+  calculate_aster(start, goal);
+}
+
+int main(int argc, char** argv)
+{
+  ros::init(argc, argv, "global_planner");
+  ros::NodeHandle nh;
+  ros::NodeHandle local_nh("~");
+
+  local_nh.getParam("START_X", start.pose.position.x);
+  local_nh.getParam("START_Y", start.pose.position.y);
+  local_nh.getParam("GOAL_X", goal.pose.position.x);
+  local_nh.getParam("GOAL_Y", goal.pose.position.y);
+  //std::cout << goal.pose.position.x << " " << goal.pose.position.y<<std::endl;
+  start.pose.orientation.w = 1;
+  goal.pose.orientation.w = 1;
+ 
+  start.header.frame_id = "map";
+  goal.header.frame_id = "map";
+
+  ros::Subscriber map_sub = nh.subscribe("/map", 100, map_callback);
+
+  ros::Publisher path_pub = nh.advertise<nav_msgs::Path>("/chibi18/global_path", 100, true);
+
+  ros::Publisher cost_pub = nh.advertise<nav_msgs::OccupancyGrid>("/chibi18/cost_map", 100);
+
+  ros::Rate loop_rate(10);
+
+  global_path.header.frame_id = "map";
+
+  while(ros::ok()){
+    if(!map.data.empty()){
+      for(int i=0;i<_cost_map.data.size();i++){
+        _cost_map.data[i] = cells[i].cost;
+      }
+      cost_pub.publish(_cost_map);
     }
-    std::cout << std::endl;
+    if(!global_path.poses.empty()){
+      path_pub.publish(global_path);
+    }
+    ros::spinOnce();
+    loop_rate.sleep();
   }
-  std::cout << std::endl;
-  */
+  return 0;
+}
+
+int get_grid_data(float x, float y)
+{
+  int data = map.data[get_index(x, y)];
+  return data;
+}
+
+int get_index(float x, float y)
+{
+  if(x > 0){
+    x = ((int)(10*(2*x)+1))/20.0;
+  }else{
+    x = ((int)(10*(2*x)))/20.0;
+  }
+  if(y > 0){
+    y = ((int)(10*(2*y)))/20.0;
+  }else{
+    y = ((int)(10*(2*y)-1))/20.0;
+  }
+  int index = int((map.info.width*(y-map.info.origin.position.y)+(x-map.info.origin.position.x))/map.info.resolution);
+  //std::cout << index << " " << x << " " << y <<std::endl;
+  return index;
+}
+int get_heuristic(int diff_x, int diff_y)
+{
+  diff_x = abs(diff_x);
+  diff_y = abs(diff_y);
+  return diff_x + diff_y;
+  if(diff_x > diff_y){
+    std::cout << "h:" << diff_x << std::endl;
+    return diff_x;
+  }else{
+    std::cout << "h:" << diff_y << std::endl;
+    return diff_y;
+  }
+}
+
+void calculate_aster(geometry_msgs::PoseStamped& start, geometry_msgs::PoseStamped& goal)
+{
   //calculate AStar
-  int start_index = get_index(start.point.x, start.point.y);
+  int start_index = get_index(start.pose.position.x, start.pose.position.y);
   int start_i = start_index % map.info.width;
   int start_j = (start_index - start_i) / map.info.width;
-  int goal_index = get_index(goal.point.x, goal.point.y);
+  int goal_index = get_index(goal.pose.position.x, goal.pose.position.y);
   int goal_i = goal_index % map.info.width;
   int goal_j = (goal_index - goal_i) / map.info.width;
   std::cout << "calculating path" << std::endl;
+  std::cout << "from " << start.pose.position.x << ", " << start.pose.position.y << ", " << get_yaw(start.pose.orientation) << std::endl;
+  std::cout << "to " << goal.pose.position.x << ", " << goal.pose.position.y << ", " << get_yaw(goal.pose.orientation) << std::endl;
   open_list.push_back(start_index);
   cells[open_list[0]].sum = cells[open_list[0]].step + get_heuristic(start_i - goal_i, start_j - goal_j);
   while(!open_list.empty() && ros::ok()){
@@ -277,80 +357,10 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
   std::cout << "global path generated!" << std::endl;
 }
 
-
-int main(int argc, char** argv)
+float get_yaw(geometry_msgs::Quaternion q)
 {
-  ros::init(argc, argv, "global_planner");
-  ros::NodeHandle nh;
-  ros::NodeHandle local_nh("~");
-
-  local_nh.getParam("START_X", start.point.x);
-  local_nh.getParam("START_Y", start.point.y);
-  local_nh.getParam("GOAL_X", goal.point.x);
-  local_nh.getParam("GOAL_Y", goal.point.y);
-  //std::cout << goal.point.x << " " << goal.point.y<<std::endl;
- 
-  start.header.frame_id = "map";
-  goal.header.frame_id = "map";
-
-  ros::Subscriber map_sub = nh.subscribe("/map", 100, map_callback);
-
-  ros::Publisher path_pub = nh.advertise<nav_msgs::Path>("/chibi18/global_path", 100, true);
-
-  ros::Publisher cost_pub = nh.advertise<nav_msgs::OccupancyGrid>("/chibi18/cost_map", 100);
-
-  ros::Rate loop_rate(10);
-
-  global_path.header.frame_id = "map";
-
-  while(ros::ok()){
-    if(!map.data.empty()){
-      for(int i=0;i<_cost_map.data.size();i++){
-        _cost_map.data[i] = cells[i].cost;
-      }
-      cost_pub.publish(_cost_map);
-    }
-    if(!global_path.poses.empty()){
-      path_pub.publish(global_path);
-    }
-    ros::spinOnce();
-    loop_rate.sleep();
-  }
-  return 0;
-}
-
-int get_grid_data(float x, float y)
-{
-  int data = map.data[get_index(x, y)];
-  return data;
-}
-
-int get_index(float x, float y)
-{
-  if(x > 0){
-    x = ((int)(10*(2*x)+1))/20.0;
-  }else{
-    x = ((int)(10*(2*x)))/20.0;
-  }
-  if(y > 0){
-    y = ((int)(10*(2*y)))/20.0;
-  }else{
-    y = ((int)(10*(2*y)-1))/20.0;
-  }
-  int index = int((map.info.width*(y-map.info.origin.position.y)+(x-map.info.origin.position.x))/map.info.resolution);
-  //std::cout << index << " " << x << " " << y <<std::endl;
-  return index;
-}
-int get_heuristic(int diff_x, int diff_y)
-{
-  diff_x = abs(diff_x);
-  diff_y = abs(diff_y);
-  return diff_x + diff_y;
-  if(diff_x > diff_y){
-    std::cout << "h:" << diff_x << std::endl;
-    return diff_x;
-  }else{
-    std::cout << "h:" << diff_y << std::endl;
-    return diff_y;
-  }
+  double r, p, y;
+  tf::Quaternion quat(q.x, q.y, q.z, q.w);
+  tf::Matrix3x3(quat).getRPY(r, p, y);
+  return y;
 }
