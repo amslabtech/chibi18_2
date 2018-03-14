@@ -50,20 +50,19 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   map = *msg;
   std::cout << map.data.size() << std::endl;
-  cells.resize(map.info.height*map.info.width);
-  for(int i=0;i<map.info.height*map.info.width;i++){
-    cells[i].is_wall = (map.data[i]!=0);
-    cells[i].is_available = ((int)map.data[i] > -1);
-    //std::cout << "map.data=" << cells[i].is_available << std::endl;
-    if(cells[i].is_wall){
-      cells[i].cost = 100;
-    }
-  }
+  
   _cost_map.header = map.header;
   _cost_map.info = map.info;
   _cost_map.data.resize(map.info.height*map.info.width);
 
   calculate_aster(start, goal);
+}
+
+void goal_callback(const geometry_msgs::PoseStampedConstPtr& msg)
+{
+  start = goal;
+  goal = *msg;
+  calculate_aster(start, goal); 
 }
 
 int main(int argc, char** argv)
@@ -89,21 +88,25 @@ int main(int argc, char** argv)
 
   ros::Publisher cost_pub = nh.advertise<nav_msgs::OccupancyGrid>("/chibi18/cost_map", 100);
 
+  ros::Subscriber goal_sub = nh.subscribe("/move_base_simple/goal", 100, goal_callback);
+
   ros::Rate loop_rate(10);
 
   global_path.header.frame_id = "map";
 
   while(ros::ok()){
     if(!map.data.empty()){
+      /*
       for(int i=0;i<_cost_map.data.size();i++){
         _cost_map.data[i] = cells[i].cost;
       }
       cost_pub.publish(_cost_map);
+      */
     }
     if(!global_path.poses.empty()){
       path_pub.publish(global_path);
-      std::cout << get_grid_data(5.05, -1.35) << std::endl;;
-      std::cout << get_index(5.05, -1.35) << std::endl;
+      //std::cout << get_grid_data(5.05, -1.35) << std::endl;;
+      //std::cout << get_index(5.05, -1.35) << std::endl;
     }
     ros::spinOnce();
     loop_rate.sleep();
@@ -150,18 +153,29 @@ int get_heuristic(int diff_x, int diff_y)
   }
 }
 
-void calculate_aster(geometry_msgs::PoseStamped& start, geometry_msgs::PoseStamped& goal)
+void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStamped& _goal)
 {
-  //calculate AStar
-  int start_index = get_index(start.pose.position.x, start.pose.position.y);
+  cells.clear();
+  open_list.clear();
+  close_list.clear();
+  cells.resize(map.info.height*map.info.width);
+  for(int i=0;i<map.info.height*map.info.width;i++){
+    cells[i].is_wall = (map.data[i]!=0);
+    cells[i].is_available = ((int)map.data[i] > -1);
+    //std::cout << "map.data=" << cells[i].is_available << std::endl;
+    if(cells[i].is_wall){
+      cells[i].cost = 100;
+    }
+  }
+  int start_index = get_index(_start.pose.position.x, _start.pose.position.y);
   int start_i = start_index % map.info.width;
   int start_j = (start_index - start_i) / map.info.width;
-  int goal_index = get_index(goal.pose.position.x, goal.pose.position.y);
+  int goal_index = get_index(_goal.pose.position.x, _goal.pose.position.y);
   int goal_i = goal_index % map.info.width;
   int goal_j = (goal_index - goal_i) / map.info.width;
   std::cout << "calculating path" << std::endl;
-  std::cout << "from " << start.pose.position.x << ", " << start.pose.position.y << ", " << get_yaw(start.pose.orientation) << ", " << start_index << std::endl;
-  std::cout << "to " << goal.pose.position.x << ", " << goal.pose.position.y << ", " << get_yaw(goal.pose.orientation) << ", " << goal_index << std::endl;
+  std::cout << "from " << _start.pose.position.x << ", " << _start.pose.position.y << ", " << get_yaw(_start.pose.orientation) << ", " << start_index << std::endl;
+  std::cout << "to " << _goal.pose.position.x << ", " << _goal.pose.position.y << ", " << get_yaw(_goal.pose.orientation) << ", " << goal_index << std::endl;
   open_list.push_back(start_index);
   cells[open_list[0]].sum = cells[open_list[0]].step + get_heuristic(start_i - goal_i, start_j - goal_j);
   while(!open_list.empty() && ros::ok()){
@@ -173,8 +187,8 @@ void calculate_aster(geometry_msgs::PoseStamped& start, geometry_msgs::PoseStamp
         n = cells[n_index].sum;
       }
     }
-    //std::cout << "openlist:" << open_list.size() << std::endl;
-    //std::cout << "goal:" << goal_i << ", " << goal_j << std::endl;
+    std::cout << "openlist:" << open_list.size() << std::endl;
+    std::cout << "goal:" << goal_i << ", " << goal_j << std::endl;
     if(n_index != goal_index){
       close_list.push_back(n_index);//選んだものがゴールでなければcloselistへ
       open_list.erase(std::remove(open_list.begin(), open_list.end(), n_index), open_list.end());//openlistから削除
@@ -184,8 +198,8 @@ void calculate_aster(geometry_msgs::PoseStamped& start, geometry_msgs::PoseStamp
     int _index;
     int _i = n_index % map.info.width;
     int _j = (n_index - _i) / map.info.width;
-    //std::cout << "current:" << _i << ", " << _j << std::endl;
-    //std::cout << "sum:" << cells[n_index].sum << std::endl;
+    std::cout << "current:" << _i << ", " << _j << std::endl;
+    std::cout << "sum:" << cells[n_index].sum << std::endl;
     if(_j-1>=0){
       _index = (_j-1)*map.info.width+_i;//i, j-1
       if((std::find(open_list.begin(), open_list.end(), _index) == open_list.end()) && (std::find(close_list.begin(), close_list.end(), _index) == close_list.end())){
@@ -354,7 +368,7 @@ void calculate_aster(geometry_msgs::PoseStamped& start, geometry_msgs::PoseStamp
     path_pose.pose.position.x = (path_index % map.info.width) * map.info.resolution + map.info.origin.position.x;
     path_pose.pose.position.y = (path_index - (path_index % map.info.width)) / map.info.width * map.info.resolution + map.info.origin.position.y;
     path_pose.pose.orientation.w = 1;
-    std::cout << path_pose.pose.position.x << ", " << path_pose.pose.position.y << ", " << path_index << ", " << cells[path_index].cost << ", " << (int)map.data[path_index] << std::endl;
+    //std::cout << path_pose.pose.position.x << ", " << path_pose.pose.position.y << ", " << path_index << ", " << cells[path_index].cost << ", " << (int)map.data[path_index] << std::endl;
     //std::cout << cells[path_index].cost << std::endl;
     global_path.poses.push_back(path_pose);
     path_index = cells[path_index].parent_index;
