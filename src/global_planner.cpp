@@ -18,7 +18,7 @@ public:
   {
     is_wall = false;
     cost = 1;
-    heuristic = -1;
+    //heuristic = -1;
     step = 0;
     sum = -1;
     parent_index = -1;
@@ -27,7 +27,7 @@ public:
 
   int cost;
   int step;
-  int heuristic;
+  //int heuristic;
   int sum;
   int parent_index;
   bool is_wall;
@@ -41,7 +41,8 @@ std::vector<int> close_list;
 
 int get_grid_data(float, float);
 int get_index(float, float);
-void calculate_heuristic(int);
+//void calculate_heuristic(int);
+int get_heuristic(int, int);
 
 void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
@@ -70,46 +71,42 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
   */
   //calculate AStar
   int start_index = get_index(start.point.x, start.point.y);
+  int start_i = start_index % map.info.width;
+  int start_j = (start_index - start_i) / map.info.width;
   int goal_index = get_index(goal.point.x, goal.point.y);
-  std::cout << "calculating heuristic" << std::endl;
-  calculate_heuristic(goal_index);
-  /*
-  for(int i=0;i<map.info.height;i++){
-    for(int j=0;j<map.info.width;j++){
-      std::cout << std::setw(2) << cells[j*map.info.width+i].heuristic << " ";
-    }
-    std::cout << std::endl;
-  }
-  std::cout << std::endl;
-  */
-  std::cout << "heuristic calculated!" << std::endl;
+  int goal_i = goal_index % map.info.width;
+  int goal_j = (goal_index - goal_i) / map.info.width;
   std::cout << "calculating path" << std::endl;
   open_list.push_back(start_index);
-  cells[open_list[0]].sum = cells[open_list[0]].step + cells[open_list[0]].heuristic;
-  while(!open_list.empty()){
+  cells[open_list[0]].sum = cells[open_list[0]].step + get_heuristic(start_i - goal_i, start_j - goal_j);
+  while(!open_list.empty() && ros::ok()){
     int n_index = open_list[0];
-    int n = cells[n_index].step + cells[n_index].heuristic;
+    int n = cells[n_index].sum;//cells[n_index].step + get_heuristic(goal_i - _i, goal_j - _j);
     for(int i=0;i<open_list.size();i++){//openlist中で最小の要素を選択
       if(cells[open_list[i]].sum < n){
         n_index = open_list[i];
         n = cells[n_index].sum;
       }
     }
+    //std::cout << "openlist:" << open_list.size() << std::endl;
+    //std::cout << "goal:" << goal_i << ", " << goal_j << std::endl;
     if(n_index != goal_index){
       close_list.push_back(n_index);//選んだものがゴールでなければcloselistへ
       open_list.erase(std::remove(open_list.begin(), open_list.end(), n_index), open_list.end());//openlistから削除
     }else{
       break;
     }
+    int _index;
     int _i = n_index % map.info.width;
     int _j = (n_index - _i) / map.info.width;
-    int _index;
+    //std::cout << "current:" << _i << ", " << _j << std::endl;
+    //std::cout << "sum:" << cells[n_index].sum << std::endl;
     if(_j-1>=0){
       _index = (_j-1)*map.info.width+_i;//i, j-1
       if((std::find(open_list.begin(), open_list.end(), _index) == open_list.end()) && (std::find(close_list.begin(), close_list.end(), _index) == close_list.end())){
         if(!cells[_index].is_wall){
           cells[_index].step = cells[n_index].step + 1;
-	  cells[_index].sum = cells[_index].cost + cells[_index].step + cells[_index].heuristic;
+	  cells[_index].sum = cells[_index].cost + cells[_index].step + get_heuristic(goal_i-_i, goal_j-(_j-1));
           cells[_index].parent_index = n_index;
           open_list.push_back(_index);
         }
@@ -120,7 +117,7 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
       if((std::find(open_list.begin(), open_list.end(), _index) == open_list.end()) && (std::find(close_list.begin(), close_list.end(), _index) == close_list.end())){
         if(!cells[_index].is_wall){
           cells[_index].step = cells[n_index].step + 1;
-          cells[_index].sum = cells[_index].cost + cells[_index].step + cells[_index].heuristic;
+          cells[_index].sum = cells[_index].cost + cells[_index].step + get_heuristic(goal_i-_i, goal_j-(_j+1));
           cells[_index].parent_index = n_index;
           open_list.push_back(_index);
         }
@@ -131,7 +128,7 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
       if((std::find(open_list.begin(), open_list.end(), _index) == open_list.end()) && (std::find(close_list.begin(), close_list.end(), _index) == close_list.end())){
         if(!cells[_index].is_wall){
           cells[_index].step = cells[n_index].step + 1;
-          cells[_index].sum = cells[_index].cost + cells[_index].step + cells[_index].heuristic;
+          cells[_index].sum = cells[_index].cost + cells[_index].step + get_heuristic(goal_i-(_i+1), goal_j-_j);
           cells[_index].parent_index = n_index;
           open_list.push_back(_index);
         }
@@ -141,7 +138,7 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
         if((std::find(open_list.begin(), open_list.end(), _index) == open_list.end()) && (std::find(close_list.begin(), close_list.end(), _index) == close_list.end())){
           if(!cells[_index].is_wall){
             cells[_index].step = cells[n_index].step + 1;
-            cells[_index].sum = cells[_index].cost + cells[_index].step + cells[_index].heuristic;
+            cells[_index].sum = cells[_index].cost + cells[_index].step + get_heuristic(goal_i-(_i+1), goal_j-(_j-1));
             cells[_index].parent_index = n_index;
             open_list.push_back(_index);
           }
@@ -152,7 +149,7 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
         if((std::find(open_list.begin(), open_list.end(), _index) == open_list.end()) && (std::find(close_list.begin(), close_list.end(), _index) == close_list.end())){
           if(!cells[_index].is_wall){
             cells[_index].step = cells[n_index].step + 1;
-            cells[_index].sum = cells[_index].cost + cells[_index].step + cells[_index].heuristic;
+            cells[_index].sum = cells[_index].cost + cells[_index].step + get_heuristic(goal_i-(_i+1), goal_j-(_j+1));
             cells[_index].parent_index = n_index;
             open_list.push_back(_index);
           }
@@ -164,7 +161,7 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
       if((std::find(open_list.begin(), open_list.end(), _index) == open_list.end()) && (std::find(close_list.begin(), close_list.end(), _index) == close_list.end())){
         if(!cells[_index].is_wall){
           cells[_index].step = cells[n_index].step + 1;
-          cells[_index].sum = cells[_index].cost + cells[_index].step + cells[_index].heuristic;
+          cells[_index].sum = cells[_index].cost + cells[_index].step + get_heuristic(goal_i-(_i-1), goal_j-_j);
           cells[_index].parent_index = n_index;
           open_list.push_back(_index);
         }
@@ -174,7 +171,7 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
         if((std::find(open_list.begin(), open_list.end(), _index) == open_list.end()) && (std::find(close_list.begin(), close_list.end(), _index) == close_list.end())){
           if(!cells[_index].is_wall){
             cells[_index].step = cells[n_index].step + 1;
-            cells[_index].sum = cells[_index].cost + cells[_index].step + cells[_index].heuristic;
+            cells[_index].sum = cells[_index].cost + cells[_index].step + get_heuristic(goal_i-(_i-1), goal_j-(_j-1));
             cells[_index].parent_index = n_index;
             open_list.push_back(_index);
           }
@@ -185,7 +182,7 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
         if((std::find(open_list.begin(), open_list.end(), _index) == open_list.end()) && (std::find(close_list.begin(), close_list.end(), _index) == close_list.end())){
           if(!cells[_index].is_wall){
             cells[_index].step = cells[n_index].step + 1;
-            cells[_index].sum = cells[_index].cost + cells[_index].step + cells[_index].heuristic;
+            cells[_index].sum = cells[_index].cost + cells[_index].step + get_heuristic(goal_i-(_i-1), goal_j-(_j+1));
             cells[_index].parent_index = n_index;
             open_list.push_back(_index);
           }
@@ -193,22 +190,6 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
       }
     }
   }
-  /*
-  for(int i=0;i<map.info.height;i++){
-    for(int j=0;j<map.info.width;j++){
-      std::cout << std::setw(2) << cells[j*map.info.width+i].sum << " ";
-    }
-    std::cout << std::endl;
-  }
-  std::cout << std::endl;
-  for(int i=0;i<map.info.height;i++){
-    for(int j=0;j<map.info.width;j++){
-      std::cout << std::setw(2) << cells[j*map.info.width+i].parent_index<< " ";
-    }
-    std::cout << std::endl;
-  }
-  std::cout << std::endl;
-  */
   int path_index = goal_index;
   geometry_msgs::PoseStamped path_pose;
   path_pose.pose.orientation.w = 1;
@@ -289,85 +270,16 @@ int get_index(float x, float y)
   //std::cout << index << " " << x << " " << y <<std::endl;
   return index;
 }
-
-void calculate_heuristic(int goal_index)
+int get_heuristic(int diff_x, int diff_y)
 {
-  ros::Time start_time = ros::Time::now();
-  int h = 0;
-  int _h = 0;//計算省略用
-  int _index = 0;//計算省略用
-  cells[goal_index].heuristic = 0;
-  bool flag = false;
-  while(1){
-    flag = false;
-    for(int i=0;i<map.info.height;i++){
-      for(int j=0;j<map.info.width;j++){
-        if(!cells[j*map.info.width+i].is_available){
-          continue;
-        }
-        if(cells[j*map.info.width+i].heuristic == h){
-          _h = h + 1;
-          flag = true;
-          if(j-1>=0){
-            _index = (j-1)*map.info.width+i;
-            if(cells[_index].heuristic<0){
-              cells[_index].heuristic = _h;//i, j-1
-            }
-          }
-          if(j+1<map.info.width){
-            _index = (j+1)*map.info.width+i;
-            if(cells[_index].heuristic<0){
-              cells[_index].heuristic = _h;//i, j+1
-            }
-          }
-          if(i+1<map.info.height){
-            _index = j*map.info.width+(i+1);
-            if(cells[_index].heuristic<0){
-              cells[_index].heuristic = _h;//i+1, j
-            }
-            if(j-1>=0){
-              _index = (j-1)*map.info.width+(i+1);
-              if(cells[_index].heuristic<0){
-                cells[_index].heuristic = _h;//i+1, j-1
-              }
-            }
-            if(j+1<map.info.width){
-              _index = (j+1)*map.info.width+(i+1);
-              if(cells[_index].heuristic<0){
-                cells[_index].heuristic = _h;//i+1, j+1
-              }
-            }
-          }
-          if(i-1>=0){
-            _index = j*map.info.width+(i-1);
-            if(cells[_index].heuristic<0){
-              cells[_index].heuristic = _h;//i-1, j
-            }
-            if(j-1>=0){
-              _index = (j-1)*map.info.width+(i-1); 
-              if(cells[_index].heuristic<0){
-                cells[_index].heuristic = _h;//i-1, j-1
-              }
-            }
-            if(j+1<map.info.width){
-              _index = (j+1)*map.info.width+(i-1);
-              if(cells[_index].heuristic<0){
-                cells[_index].heuristic = _h;//i-1, j+1
-              }
-            }
-          }
-        }
-      }
-    }
-    if(!flag){
-      break;;
-    }
-    if(h > map.info.width*map.info.height){
-      std::cout << "heuristic value error!" << std::endl;
-      exit(-1);
-    }
-    //std::cout << h << std::endl;
-    h++;
+  diff_x = abs(diff_x);
+  diff_y = abs(diff_y);
+  return diff_x + diff_y;
+  if(diff_x > diff_y){
+    std::cout << "h:" << diff_x << std::endl;
+    return diff_x;
+  }else{
+    std::cout << "h:" << diff_y << std::endl;
+    return diff_y;
   }
-  std::cout << ros::Time::now()-start_time << "[s]" << std::endl;
 }
