@@ -102,6 +102,8 @@ int main(int argc, char** argv)
     }
     if(!global_path.poses.empty()){
       path_pub.publish(global_path);
+      std::cout << get_grid_data(5.05, -1.35) << std::endl;;
+      std::cout << get_index(5.05, -1.35) << std::endl;
     }
     ros::spinOnce();
     loop_rate.sleep();
@@ -117,6 +119,7 @@ int get_grid_data(float x, float y)
 
 int get_index(float x, float y)
 {
+  /*
   if(x > 0){
     x = ((int)(10*(2*x)+1))/20.0;
   }else{
@@ -127,10 +130,12 @@ int get_index(float x, float y)
   }else{
     y = ((int)(10*(2*y)-1))/20.0;
   }
-  int index = int((map.info.width*(y-map.info.origin.position.y)+(x-map.info.origin.position.x))/map.info.resolution);
+  */
+  int index = int((map.info.width*(y-map.info.origin.position.y)+(x-map.info.origin.position.x))/map.info.resolution) + 1;
   //std::cout << index << " " << x << " " << y <<std::endl;
   return index;
 }
+
 int get_heuristic(int diff_x, int diff_y)
 {
   diff_x = abs(diff_x);
@@ -155,8 +160,8 @@ void calculate_aster(geometry_msgs::PoseStamped& start, geometry_msgs::PoseStamp
   int goal_i = goal_index % map.info.width;
   int goal_j = (goal_index - goal_i) / map.info.width;
   std::cout << "calculating path" << std::endl;
-  std::cout << "from " << start.pose.position.x << ", " << start.pose.position.y << ", " << get_yaw(start.pose.orientation) << std::endl;
-  std::cout << "to " << goal.pose.position.x << ", " << goal.pose.position.y << ", " << get_yaw(goal.pose.orientation) << std::endl;
+  std::cout << "from " << start.pose.position.x << ", " << start.pose.position.y << ", " << get_yaw(start.pose.orientation) << ", " << start_index << std::endl;
+  std::cout << "to " << goal.pose.position.x << ", " << goal.pose.position.y << ", " << get_yaw(goal.pose.orientation) << ", " << goal_index << std::endl;
   open_list.push_back(start_index);
   cells[open_list[0]].sum = cells[open_list[0]].step + get_heuristic(start_i - goal_i, start_j - goal_j);
   while(!open_list.empty() && ros::ok()){
@@ -348,6 +353,9 @@ void calculate_aster(geometry_msgs::PoseStamped& start, geometry_msgs::PoseStamp
   while(1){
     path_pose.pose.position.x = (path_index % map.info.width) * map.info.resolution + map.info.origin.position.x;
     path_pose.pose.position.y = (path_index - (path_index % map.info.width)) / map.info.width * map.info.resolution + map.info.origin.position.y;
+    path_pose.pose.orientation.w = 1;
+    std::cout << path_pose.pose.position.x << ", " << path_pose.pose.position.y << ", " << path_index << ", " << cells[path_index].cost << ", " << (int)map.data[path_index] << std::endl;
+    //std::cout << cells[path_index].cost << std::endl;
     global_path.poses.push_back(path_pose);
     path_index = cells[path_index].parent_index;
     if(path_index < 0){
