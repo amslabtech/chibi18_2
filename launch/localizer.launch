@@ -6,10 +6,10 @@
    <arg name="_INIT_X_COVARIANCE" default="0.5"/>
    <arg name="_INIT_Y_COVARIANCE" default="0.5"/>
    <arg name="_INIT_YAW_COVARIANCE" default="0.5"/>
-   <arg name="_INIT_X" default="42"/>
-   <arg name="_INIT_Y" default="32"/>
+   <arg name="_INIT_X" default="0"/>
+   <arg name="_INIT_Y" default="0"/>
    <arg name="_INIT_YAW" default="0.0"/>
-   <arg name="ODOM_XY_NOISE" default="0.01"/>
+   <arg name="ODOM_XY_NOISE" default="0.001"/>
    <arg name="ODOM_YAW_NOISE" default="0.01"/>
 
   <node pkg="chibi18_control" name="localizer" type="localizer" output="screen">

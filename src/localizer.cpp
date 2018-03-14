@@ -125,12 +125,15 @@ int main(int argc, char** argv)
     set_transform(init_x, init_y, init_yaw);//適当
 
     while(ros::ok()){
-      if(map_subscribed/* && !laser_data_from_scan.ranges.empty()*/){
+      if(map_subscribed && !laser_data_from_scan.ranges.empty()){
         //pridiction
-        float dx, dy, dtheta;
+        float dx = 0.0;
+        float dy = 0.0;
+        float dtheta = 0.0;
         geometry_msgs::Quaternion qc, qp;
-        /*
+        
         try{
+          std::cout << "lookup transform odom to base_link" << std::endl;
           listener.lookupTransform("odom", "base_link", ros::Time(0), current_base_link_pose);
           dx = current_base_link_pose.getOrigin().x() - previous_base_link_pose.getOrigin().x();
           dy = current_base_link_pose.getOrigin().y() - previous_base_link_pose.getOrigin().y();
@@ -140,12 +143,12 @@ int main(int argc, char** argv)
           previous_base_link_pose = current_base_link_pose; 
         }catch(tf::TransformException &ex){
           std::cout << ex.what() << std::endl;
-          continue;
+          //continue;
         }
-        */
+        
         for(int i=0;i<particles.size();i++){
-          particles[i].move(0.01, 0.01, 0.05);//適当
-          //particles[i].move(dx, dy, dtheta);
+          //particles[i].move(0.01, 0.01, 0.05);//適当
+          particles[i].move(dx, dy, dtheta);
         }
 
         /*
@@ -246,6 +249,7 @@ int main(int argc, char** argv)
         transform.transform.rotation.z += g_q.z;
         transform.transform.rotation.w += g_q.w;
         */
+        std::cout << "from map to odom transform broadcasted" << std::endl;
         map_broadcaster.sendTransform(transform);
       }
       ros::spinOnce();
@@ -319,8 +323,8 @@ void Particle::initialize(int width, int height, float resolution, geometry_msgs
 void Particle::move(float x, float y, float yaw)
 {
   std::normal_distribution<> rand_xy(0, odom_xy_noise);
-  pose.pose.position.x += x * cos(get_yaw(pose.pose.orientation)) - y * sin(get_yaw(pose.pose.orientation)) + rand_xy(mt);
-  pose.pose.position.y += x * sin(get_yaw(pose.pose.orientation)) + y * cos(get_yaw(pose.pose.orientation)) + rand_xy(mt);
+  pose.pose.position.x += x + rand_xy(mt);
+  pose.pose.position.y += y + rand_xy(mt);
   std::normal_distribution<> rand_yaw(0, odom_yaw_noise);
   quaternionTFToMsg(tf::createQuaternionFromYaw(get_yaw(pose.pose.orientation) + yaw + rand_yaw(mt)), pose.pose.orientation); 
 }
