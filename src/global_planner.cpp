@@ -161,12 +161,20 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
   cells.resize(map.info.height*map.info.width);
   for(int i=0;i<map.info.height*map.info.width;i++){
     cells[i].is_wall = (map.data[i]!=0);
-    cells[i].is_available = ((int)map.data[i] > -1);
+    //cells[i].is_available = ((int)map.data[i] > -1);
+    cells[i].sum = -1;
+    cells[i].parent_index = -1;
     //std::cout << "map.data=" << cells[i].is_available << std::endl;
     if(cells[i].is_wall){
       cells[i].cost = 100;
     }
   }
+  
+  _start.pose.position.x = ((int)(_start.pose.position.x / map.info.resolution) * map.info.resolution);
+  _start.pose.position.y = ((int)(_start.pose.position.y / map.info.resolution) * map.info.resolution);
+  _goal.pose.position.x = ((int)(_goal.pose.position.x / map.info.resolution) * map.info.resolution);
+  _goal.pose.position.y = ((int)(_goal.pose.position.y / map.info.resolution) * map.info.resolution);
+  
   int start_index = get_index(_start.pose.position.x, _start.pose.position.y);
   int start_i = start_index % map.info.width;
   int start_j = (start_index - start_i) / map.info.width;
@@ -175,7 +183,9 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
   int goal_j = (goal_index - goal_i) / map.info.width;
   std::cout << "calculating path" << std::endl;
   std::cout << "from " << _start.pose.position.x << ", " << _start.pose.position.y << ", " << get_yaw(_start.pose.orientation) << ", " << start_index << std::endl;
+  std::cout << start_i << ", " << start_j << std::endl;
   std::cout << "to " << _goal.pose.position.x << ", " << _goal.pose.position.y << ", " << get_yaw(_goal.pose.orientation) << ", " << goal_index << std::endl;
+  std::cout << goal_i << ", " << goal_j << std::endl;
   open_list.push_back(start_index);
   cells[open_list[0]].sum = cells[open_list[0]].step + get_heuristic(start_i - goal_i, start_j - goal_j);
   while(!open_list.empty() && ros::ok()){
@@ -187,8 +197,8 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
         n = cells[n_index].sum;
       }
     }
-    std::cout << "openlist:" << open_list.size() << std::endl;
-    std::cout << "goal:" << goal_i << ", " << goal_j << std::endl;
+    //std::cout << "openlist:" << open_list.size() << std::endl;
+    //std::cout << "goal:" << goal_i << ", " << goal_j << std::endl;
     if(n_index != goal_index){
       close_list.push_back(n_index);//選んだものがゴールでなければcloselistへ
       open_list.erase(std::remove(open_list.begin(), open_list.end(), n_index), open_list.end());//openlistから削除
@@ -198,8 +208,8 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
     int _index;
     int _i = n_index % map.info.width;
     int _j = (n_index - _i) / map.info.width;
-    std::cout << "current:" << _i << ", " << _j << std::endl;
-    std::cout << "sum:" << cells[n_index].sum << std::endl;
+    //std::cout << "current:" << _i << ", " << _j << std::endl;
+    //std::cout << "sum:" << cells[n_index].sum << std::endl;
     if(_j-1>=0){
       _index = (_j-1)*map.info.width+_i;//i, j-1
       if((std::find(open_list.begin(), open_list.end(), _index) == open_list.end()) && (std::find(close_list.begin(), close_list.end(), _index) == close_list.end())){
@@ -360,6 +370,8 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
       }
     }
   }
+  nav_msgs::Path _path;
+  _path.header.frame_id = "map";
   int path_index = goal_index;
   geometry_msgs::PoseStamped path_pose;
   path_pose.pose.orientation.w = 1;
@@ -370,9 +382,11 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
     path_pose.pose.orientation.w = 1;
     //std::cout << path_pose.pose.position.x << ", " << path_pose.pose.position.y << ", " << path_index << ", " << cells[path_index].cost << ", " << (int)map.data[path_index] << std::endl;
     //std::cout << cells[path_index].cost << std::endl;
-    global_path.poses.push_back(path_pose);
+    _path.poses.push_back(path_pose);
     path_index = cells[path_index].parent_index;
+    //std::cout << "next:" << path_index << std::endl;
     if(path_index < 0){
+      global_path.poses.insert(global_path.poses.begin(), _path.poses.begin(), _path.poses.end());
       break;
     }
   }
