@@ -49,6 +49,8 @@ int get_heuristic(int, int);
 void calculate_aster(geometry_msgs::PoseStamped&, geometry_msgs::PoseStamped&);
 float get_yaw(geometry_msgs::Quaternion);
 bool first_aster = true;
+bool pose_subscribed = false;
+float waypoint_distance;
 
 void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
@@ -75,6 +77,7 @@ void goal_callback(const geometry_msgs::PoseStampedConstPtr& msg)
 void pose_callback(const geometry_msgs::PoseStampedConstPtr& msg)
 {
   estimated_pose = *msg;
+  pose_subscribed = true;
 }
 
 int main(int argc, char** argv)
@@ -85,8 +88,7 @@ int main(int argc, char** argv)
 
   local_nh.getParam("START_X", start.pose.position.x);
   local_nh.getParam("START_Y", start.pose.position.y);
-  local_nh.getParam("GOAL_X", goal.pose.position.x);
-  local_nh.getParam("GOAL_Y", goal.pose.position.y);
+  local_nh.getParam("WAYPOINT_DISTANCE", waypoint_distance);
   //std::cout << goal.pose.position.x << " " << goal.pose.position.y<<std::endl;
   start.pose.orientation.w = 1;
   goal.pose.orientation.w = 1;
@@ -102,7 +104,7 @@ int main(int argc, char** argv)
 
   ros::Subscriber goal_sub = nh.subscribe("/move_base_simple/goal", 100, goal_callback);
 
-  ros::Publisher target_pub = nh.advertise<geometry_msgs::PoseStamped>("/chibi18/target", 100);
+  ros::Publisher target_pub = nh.advertise<geometry_msgs::PoseStamped>("/chibi18/target", 100, true);
 
   ros::Subscriber pose_sub = nh.subscribe("/chibi18/estimated_pose", 100, pose_callback);
 
@@ -111,6 +113,8 @@ int main(int argc, char** argv)
   ros::Rate loop_rate(10);
 
   global_path.header.frame_id = "map";
+
+  std::vector<geometry_msgs::PoseStamped>::iterator it = global_path.poses.begin();
 
   while(ros::ok()){
     int navigation_index = 0;
@@ -126,6 +130,19 @@ int main(int argc, char** argv)
       path_pub.publish(global_path);
       //std::cout << get_grid_data(5.05, -1.35) << std::endl;;
       //std::cout << get_index(5.05, -1.35) << std::endl;
+      if(pose_subscribed){
+        while(it != global_path.poses.end()){
+          float distance = sqrt(pow(it->pose.position.x - estimated_pose.pose.position.x, 2) + pow(it->pose.position.y - estimated_pose.pose.position.y, 2));
+          if(waypoint_distance < distance){
+            target_pub.publish(*it);
+            break;
+          }else if(it == global_path.poses.end() -1){
+            target_pub.publish(*it);
+            break;
+          }
+          ++it;
+        }
+      }
     }
     ros::spinOnce();
     loop_rate.sleep();
