@@ -45,6 +45,7 @@ int get_index(float, float);
 int get_heuristic(int, int);
 void calculate_aster(geometry_msgs::PoseStamped&, geometry_msgs::PoseStamped&);
 float get_yaw(geometry_msgs::Quaternion);
+bool first_aster = true;
 
 void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
@@ -54,15 +55,18 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
   _cost_map.header = map.header;
   _cost_map.info = map.info;
   _cost_map.data.resize(map.info.height*map.info.width);
-
-  calculate_aster(start, goal);
 }
 
 void goal_callback(const geometry_msgs::PoseStampedConstPtr& msg)
 {
-  start = goal;
-  goal = *msg;
-  calculate_aster(start, goal); 
+  if(!first_aster){
+    start = goal;
+    goal = *msg;
+  }else{
+    goal = *msg;
+    first_aster = false;
+  }
+  calculate_aster(start, goal);
 }
 
 int main(int argc, char** argv)
