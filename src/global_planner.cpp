@@ -3,12 +3,15 @@
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <tf/tf.h>
+#include <tf/transform_listener.h>
 
 geometry_msgs::PoseStamped start;
 geometry_msgs::PoseStamped goal;
 
 nav_msgs::OccupancyGrid map;
 nav_msgs::Path global_path;
+
+geometry_msgs::PoseStamped estimated_pose;
 
 nav_msgs::OccupancyGrid _cost_map;//for debug
 
@@ -69,6 +72,11 @@ void goal_callback(const geometry_msgs::PoseStampedConstPtr& msg)
   calculate_aster(start, goal);
 }
 
+void pose_callback(const geometry_msgs::PoseStampedConstPtr& msg)
+{
+  estimated_pose = *msg;
+}
+
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "global_planner");
@@ -94,11 +102,18 @@ int main(int argc, char** argv)
 
   ros::Subscriber goal_sub = nh.subscribe("/move_base_simple/goal", 100, goal_callback);
 
+  ros::Publisher target_pub = nh.advertise<geometry_msgs::PoseStamped>("/chibi18/target", 100);
+
+  ros::Subscriber pose_sub = nh.subscribe("/chibi18/estimated_pose", 100, pose_callback);
+
+  tf::TransformListener listener;
+
   ros::Rate loop_rate(10);
 
   global_path.header.frame_id = "map";
 
   while(ros::ok()){
+    int navigation_index = 0;
     if(!map.data.empty()){
       /*
       for(int i=0;i<_cost_map.data.size();i++){
@@ -390,7 +405,8 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
     path_index = cells[path_index].parent_index;
     //std::cout << "next:" << path_index << std::endl;
     if(path_index < 0){
-      global_path.poses.insert(global_path.poses.begin(), _path.poses.begin(), _path.poses.end());
+      std::reverse(_path.poses.begin(), _path.poses.end());
+      global_path.poses.insert(global_path.poses.end(), _path.poses.begin(), _path.poses.end());
       break;
     }
   }
