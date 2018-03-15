@@ -12,15 +12,19 @@
 #include <geometry_msgs/PoseStamped.h>
 
 //物理量に修正すること
-const float MAX_VELOCITY = 0.45;
-const float MAX_ANGULAR_VELOCITY = 2.0;
-const float MAX_ACCELERATION = 1.5;
-const float MAX_ANGULAR_ACCELERATION = 6.0;
-const float VELOCITY_RESOLUTION = 0.01;
-const float ANGULAR_VELOCITY_RESOLUTION = 0.05;
+float MAX_VELOCITY;
+float MAX_ANGULAR_VELOCITY;
+float MAX_ACCELERATION;
+float MAX_ANGULAR_ACCELERATION;
+float VELOCITY_RESOLUTION;
+float ANGULAR_VELOCITY_RESOLUTION;
 const float INTERVAL = 0.100;
-const float SIMULATE_TIME = 2.500;
+float SIMULATE_TIME;
 const float LASER_RESOLUTION = 0.00436332312;//[rad]
+float RATIO;
+float V_THRESHOLD;
+float OMEGA_THRESHOLD;
+float LIMIT_DISTANCE;
 
 //評価関数の係数
 float ALPHA = 0;//heading
@@ -91,6 +95,17 @@ int main(int argc, char** argv)
     local_nh.getParam("ALPHA", ALPHA);
     local_nh.getParam("BETA", BETA);    
     local_nh.getParam("GAMMA", GAMMA);
+    local_nh.getParam("MAX_VELOCITY", MAX_VELOCITY);
+    local_nh.getParam("MAX_ANGULAR_VELOCITY", MAX_ANGULAR_VELOCITY);
+    local_nh.getParam("MAX_ACCELERATION", MAX_ACCELERATION);
+    local_nh.getParam("MAX_ANGULAR_ACCELERATION", MAX_ANGULAR_ACCELERATION);
+    local_nh.getParam("VELOCITY_RESOLUTION", VELOCITY_RESOLUTION);
+    local_nh.getParam("ANGULAR_VELOCITY_RESOLUTION", ANGULAR_VELOCITY_RESOLUTION);
+    local_nh.getParam("SIMULATE_TIME", SIMULATE_TIME);
+    local_nh.getParam("RATIO", RATIO);
+    local_nh.getParam("V_THRESHOLD", V_THRESHOLD);
+    local_nh.getParam("OMEGA_THRESHOLD", OMEGA_THRESHOLD);
+    local_nh.getParam("LIMIT_DISTANCE", LIMIT_DISTANCE);
 
     ros::Subscriber odometry_sub = nh.subscribe("/roomba/odometry", 100, odometry_callback);
 
@@ -140,16 +155,15 @@ int main(int argc, char** argv)
         }
         path_pub.publish(local_path);
 
-        float ratio = 0.25;
         float distance_to_goal = sqrt(pow(goal.pose.position.x - current_odometry.pose.pose.position.x, 2) + pow(goal.pose.position.y-current_odometry.pose.pose.position.y, 2));
-        if(distance_to_goal < 0.5){
+        if(distance_to_goal < V_THRESHOLD){
           velocity.twist.linear.x *= 2*distance_to_goal;
         }
-        if(distance_to_goal < 0.05){
+        if(distance_to_goal < OMEGA_THRESHOLD){
           velocity.twist.angular.z *= 2*distance_to_goal;
         }
-        velocity.twist.linear.x *= ratio;
-        velocity.twist.angular.z *= (1-ratio);
+        velocity.twist.linear.x *= RATIO;
+        velocity.twist.angular.z *= (1-RATIO);
 
         //stopの時
         if(!move_allowed){
@@ -248,7 +262,6 @@ float calcurate_distance(float v, float omega)
 
   int index = 0;
 
-  const float LIMIT_DISTANCE = 1.5;
   float distance = LIMIT_DISTANCE;
   for(int i=60;i<660;i+=20){//15~165
     if(_laser_data.ranges[i] < LIMIT_DISTANCE){

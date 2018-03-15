@@ -1,9 +1,34 @@
 <launch>
 
+  <arg name="ALPHA" default="0.045"/>
+  <arg name="BETA" default="1.00"/>
+  <arg name="GAMMA" default="1.80"/>
+  <arg name="MAX_VELOCITY" default="0.45"/>
+  <arg name="MAX_ANGULAR_VELOCITY" default="2.0"/>
+  <arg name="MAX_ACCELERATION" default="1.5"/>
+  <arg name="MAX_ANGULAR_ACCELERATION" default="6.0"/>
+  <arg name="VELOCITY_RESOLUTION" default="0.01"/>
+  <arg name="ANGULAR_VELOCITY_RESOLUTION" default="0.05"/>
+  <arg name="SIMULATE_TIME" default="2.500"/>
+  <arg name="RATIO" default="0.25"/>
+  <arg name="V_THRESHOLD" default="0.5"/>
+  <arg name="OMEGA_THRESHOLD" default="0.05"/>
+  <arg name="LIMIT_DISTANCE" default="1.5"/>
+
   <node pkg="chibi18_control" name="local_planner" type="local_planner">
-    <param name="ALPHA" value="0.045"/>
-    <param name="BETA" value="1.00"/>
-    <param name="GAMMA" value="1.8"/>
+    <param name="ALPHA" value="$(arg ALPHA)"/>
+    <param name="BETA" value="$(arg BETA)"/>
+    <param name="GAMMA" value="$(arg GAMMA)"/>
+    <param name="MAX_VELOCITY" value="$(arg MAX_VELOCITY)"/>
+    <param name="MAX_ANGULAR_VELOCITY" value="$(arg MAX_ANGULAR_VELOCITY)"/>
+    <param name="MAX_ACCELERATION" value="$(arg MAX_ACCELERATION)"/>
+    <param name="MAX_ANGULAR_ACCELERATION" value="$(arg MAX_ANGULAR_ACCELERATION)"/>
+    <param name="VELOCITY_RESOLUTION" value="$(arg VELOCITY_RESOLUTION)"/> 
+    <param name="ANGULAR_VELOCITY_RESOLUTION" value="$(arg ANGULAR_VELOCITY_RESOLUTION)"/> 
+    <param name="SIMULATE_TIME" value="$(arg SIMULATE_TIME)"/>
+    <param name="V_THRESHOLD" value="$(arg V_THRESHOLD)"/>
+    <param name="OMEGA_THRESHOLD" value="$(arg OMEGA_THRESHOLD)"/>
+    <param name="LIMIT_DISTANCE" value="$(arg LIMIT_DISTANCE)"/>
   </node>
 
 </launch>
