@@ -1,12 +1,15 @@
 <launch>
 
-   <include file="$(find chibi18_control)/launch/basis.launch"/>
+  <include file="$(find chibi18_control)/launch/basis.launch"/>
 
   <include file="$(find chibi18_control)/launch/local_planner.launch"/>
 
   <include file="$(find chibi18_control)/launch/localizer.launch"/>
 
   <include file="$(find chibi18_control)/launch/global_planner.launch"/>
+
+  <arg name="map_file" default="$(find chibi18_control)/map/map/map3.yaml"/>
+  <node pkg="map_server" type="map_server" name="map_server" args="$(arg map_file)"/>
 
   <node pkg="rviz" type="rviz" name="rviz"/>
 
