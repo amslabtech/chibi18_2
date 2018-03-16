@@ -13,6 +13,7 @@
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <Eigen/Dense>
 
 #include <random>
 
@@ -42,6 +43,8 @@ float init_y;
 float init_yaw;
 float odom_yaw_noise;
 float odom_xy_noise;
+float range_max;
+int matching_step;
 nav_msgs::OccupancyGrid map;
 bool map_subscribed = false;
 std::vector<Particle>  particles;
@@ -65,6 +68,13 @@ void set_transform(float, float, float);
 void laser_callback(const sensor_msgs::LaserScanConstPtr& msg)
 {
   laser_data_from_scan = *msg;
+  for(int i=0;i<720;i++){
+    if(std::isinf(laser_data_from_scan.ranges[i])){
+      laser_data_from_scan.ranges[i] = range_max;
+    }else if(laser_data_from_scan.ranges[i] > range_max){
+      laser_data_from_scan.ranges[i] = range_max;
+    }
+  }
   projector.projectLaser(laser_data_from_scan, data_from_scan); 
 }
 
@@ -93,7 +103,7 @@ int main(int argc, char** argv)
     ros::NodeHandle local_nh("~");
 
     local_nh.getParam("N", N);
-    local_nh.getParam("POSISION_SIGMA", POSITION_SIGMA);
+    local_nh.getParam("POSITION_SIGMA", POSITION_SIGMA);
     local_nh.getParam("ORIENTATION_SIGMA", ORIENTATION_SIGMA);
     local_nh.getParam("INIT_X_COVARIANCE", init_x_cov);
     local_nh.getParam("INIT_Y_COVARIANCE", init_y_cov);
@@ -103,6 +113,8 @@ int main(int argc, char** argv)
     local_nh.getParam("INIT_YAW", init_yaw);
     local_nh.getParam("ODOM_XY_NOISE", odom_xy_noise);
     local_nh.getParam("ODOM_YAW_NOISE", odom_yaw_noise);
+    local_nh.getParam("RANGE_MAX", range_max);
+    local_nh.getParam("MATCHIING_STEP", matching_step);
 
     std::srand(time(NULL));
 
@@ -137,22 +149,62 @@ int main(int argc, char** argv)
           listener.lookupTransform("odom", "base_link", ros::Time(0), current_base_link_pose);
           dx = current_base_link_pose.getOrigin().x() - previous_base_link_pose.getOrigin().x();
           dy = current_base_link_pose.getOrigin().y() - previous_base_link_pose.getOrigin().y();
+          std::cout << "calc quat" << std::endl;
           quaternionTFToMsg(current_base_link_pose.getRotation(), qc);
           quaternionTFToMsg(previous_base_link_pose.getRotation(), qp);
           dtheta = get_yaw(qc) - get_yaw(qp);
           previous_base_link_pose = current_base_link_pose; 
+          std::cout << "calc end" << std::endl;
         }catch(tf::TransformException &ex){
           std::cout << ex.what() << std::endl;
           //continue;
         }
-        
+         
         for(int i=0;i<particles.size();i++){
           //particles[i].move(0.01, 0.01, 0.05);//適当
           particles[i].move(dx, dy, dtheta);
         }
 
-        /*
         //measurement & likelihood
+        
+        std::cout << "calculate likelihood" << std::endl;
+        sensor_msgs::LaserScan laser_data_from_map;
+        laser_data_from_map = laser_data_from_scan; 
+        for(int i=0;i<N;i++){
+          std::cout << "N=" << i << std::endl;
+          Eigen::Vector3d obstacle_map;//mapフレームから見たある障害物の位置
+          obstacle_map(2) = 1;
+          Eigen::Matrix3d laser_to_map;//laserフレームからmapフレームへの変換
+          laser_to_map << cos(get_yaw(particles[i].pose.pose.orientation)), -sin(get_yaw(particles[i].pose.pose.orientation)), particles[i].pose.pose.position.x,
+                          sin(get_yaw(particles[i].pose.pose.orientation)), cos(get_yaw(particles[i].pose.pose.orientation)), particles[i].pose.pose.position.y,
+                          0, 0, 1;
+          Eigen::Vector3d obstacle_laser;//laserフレームから見たある障害物の位置
+          obstacle_laser(2) = 1;
+          for(int angle=0;angle<720;angle++){
+            laser_data_from_map.ranges[angle] = -1;
+            for(float distance=0;distance<range_max;distance+=map.info.resolution){
+              float _angle = angle*laser_data_from_scan.angle_increment - M_PI/2.0;
+              obstacle_laser(0) = distance * cos(_angle);
+              obstacle_laser(1) = distance * sin(_angle); 
+              obstacle_map = laser_to_map * obstacle_laser;
+              if(get_grid_data(obstacle_map(0), obstacle_map(1)) == 100){
+                laser_data_from_map.ranges[angle] = sqrt(pow(obstacle_map(0), 2) + pow(obstacle_map(1), 2));
+                break;
+              }
+            } 
+            if(laser_data_from_map.ranges[angle] < 0){
+              laser_data_from_map.ranges[angle] = range_max;
+            }
+            //std::cout << angle << ":" << laser_data_from_map.ranges[angle] << std::endl;
+          }
+          float rss = 0;//残差平方和
+          for(int angle=0;angle<720;angle++){
+            rss += pow(laser_data_from_map.ranges[angle] - laser_data_from_scan.ranges[angle], 2); 
+          }
+          particles[i].likelihood =  exp(-pow(rss / POSITION_SIGMA, 2) / 2.0);
+        }
+        
+        /*
         pcl::PointCloud<pcl::PointXYZ> pcl_from_scan;
         pcl::fromROSMsg(data_from_scan, pcl_from_scan);
         pcl::PointCloud<pcl::PointXYZ> pcl_from_map;
@@ -198,6 +250,7 @@ int main(int argc, char** argv)
         }
 
         //resampling
+        std::cout << "resampling" << std::endl;
         std::vector<Particle> new_particles;
         int max_index = 0;
         for(int i=0;i<N;i++){
@@ -223,6 +276,7 @@ int main(int argc, char** argv)
         poses_pub.publish(poses);
         
         //推定値の算出
+        std::cout << "calculate estimated_pose" << std::endl;
         geometry_msgs::PoseStamped estimated_pose;
         estimated_pose.header.frame_id = "map";
         for(int i=0;i<N;i++){
@@ -236,6 +290,7 @@ int main(int argc, char** argv)
         pose_pub.publish(estimated_pose);
 
         //odomの補正を計算
+        std::cout << "modfy frame odom" << std::endl;
         transform.header.stamp = ros::Time::now();
         /*
         transform.transform.translation.x += estimated_pose.pose.position.x - current_base_link_pose.getOrigin().x();
@@ -249,8 +304,9 @@ int main(int argc, char** argv)
         transform.transform.rotation.z += g_q.z;
         transform.transform.rotation.w += g_q.w;
         */
-        std::cout << "from map to odom transform broadcasted" << std::endl;
         map_broadcaster.sendTransform(transform);
+        std::cout << "from map to odom transform broadcasted" << std::endl;
+        
       }
       ros::spinOnce();
       loop_rate.sleep();
