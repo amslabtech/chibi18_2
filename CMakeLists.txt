@@ -145,9 +145,9 @@ include_directories(
 add_executable(set_target src/set_target.cpp)
 add_executable(stopper src/stopper.cpp)
 add_executable(changer src/changer.cpp)
-add_executable(local_planner src/local_planner.cpp)
+add_executable(local_path_planner src/local_path_planner.cpp)
 add_executable(laser_link src/laser_link.cpp)
-add_executable(global_planner src/global_planner.cpp)
+add_executable(global_path_planner src/global_path_planner.cpp)
 add_executable(localizer src/localizer.cpp)
 
 ## Rename C++ executable without prefix
@@ -170,13 +170,13 @@ target_link_libraries(stopper
 target_link_libraries(changer
   ${catkin_LIBRARIES}
 )
-target_link_libraries(local_planner
+target_link_libraries(local_path_planner
   ${catkin_LIBRARIES}
 )
 target_link_libraries(laser_link
   ${catkin_LIBRARIES}
 )
-target_link_libraries(global_planner
+target_link_libraries(global_path_planner
   ${catkin_LIBRARIES}
 )
 target_link_libraries(localizer
