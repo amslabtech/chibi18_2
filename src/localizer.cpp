@@ -145,7 +145,7 @@ int main(int argc, char** argv)
         float dy = 0.0;
         float dtheta = 0.0;
         geometry_msgs::Quaternion qc, qp;
-        /* 
+         
         try{
           std::cout << "lookup transform odom to base_link" << std::endl;
           listener.lookupTransform("odom", "base_link", ros::Time(0), current_base_link_pose);
@@ -166,7 +166,7 @@ int main(int argc, char** argv)
           //particles[i].move(0.01, 0.01, 0.05);//適当
           particles[i].move(dx, dy, dtheta);
         }
-        */
+        
         //measurement & likelihood
         
         std::cout << "calculate likelihood" << std::endl;
@@ -183,7 +183,7 @@ int main(int argc, char** argv)
                           0, 0, 1;
           Eigen::Vector3d obstacle_laser;//laserフレームから見たある障害物の位置
           obstacle_laser(2) = 1;
-          std::cout << "p:" << particles[i].pose.pose.position.x << ", " << particles[i].pose.pose.position.y << ", " << get_yaw(particles[i].pose.pose.orientation) << std::endl;
+          //std::cout << "p:" << particles[i].pose.pose.position.x << ", " << particles[i].pose.pose.position.y << ", " << get_yaw(particles[i].pose.pose.orientation) << std::endl;
           for(int angle=0;angle<720;angle++){
             laser_data_from_map.ranges[angle] = -1;
             float _angle = angle*laser_data_from_scan.angle_increment - M_PI/2.0;
@@ -207,7 +207,7 @@ int main(int argc, char** argv)
             }
             //std::cout << angle << ":" << laser_data_from_map.ranges[angle] << std::endl;
           }
-          laser_pub.publish(laser_data_from_map);
+          //laser_pub.publish(laser_data_from_map);
           float rss = 0;//残差平方和
           for(int angle=0;angle<720;angle++){
             rss += pow(laser_data_from_map.ranges[angle] - laser_data_from_scan.ranges[angle], 2); 
@@ -257,10 +257,13 @@ int main(int argc, char** argv)
         for(int i=0;i<N;i++){
           estimated_pose.pose.position.x += particles[i].likelihood * particles[i].pose.pose.position.x; 
           estimated_pose.pose.position.y += particles[i].likelihood * particles[i].pose.pose.position.y; 
-          tf::Quaternion temp_tf_q = tf::createQuaternionFromYaw((1 + particles[i].likelihood) * get_yaw(particles[i].pose.pose.orientation));
+          tf::Quaternion temp_tf_q = tf::createQuaternionFromYaw((particles[i].likelihood) * get_yaw(particles[i].pose.pose.orientation));
           geometry_msgs::Quaternion temp_g_q;
           quaternionTFToMsg(temp_tf_q, temp_g_q);
-          estimated_pose.pose.orientation = temp_g_q;
+          estimated_pose.pose.orientation.x = temp_g_q.x;
+          estimated_pose.pose.orientation.y = temp_g_q.y;
+          estimated_pose.pose.orientation.z = temp_g_q.z;
+          estimated_pose.pose.orientation.w = temp_g_q.w;
         }
         pose_pub.publish(estimated_pose);
 
