@@ -353,11 +353,13 @@ void Particle::initialize(int width, int height, float resolution, geometry_msgs
   likelihood = 1.0 / (float)N;
 }
 
-void Particle::move(float x, float y, float yaw)
+void Particle::move(float dx, float dy, float dtheta)
 {
+  //引数はodomから見たbase_linkの動き
+  float yaw = get_yaw(pose.pose.orientation);
   std::normal_distribution<> rand_xy(0, odom_xy_noise);
-  pose.pose.position.x += x + rand_xy(mt);
-  pose.pose.position.y += y + rand_xy(mt);
+  pose.pose.position.x += dx * cos(yaw) - dy * sin(yaw) + rand_xy(mt);
+  pose.pose.position.y += dy * sin(yaw) + dy * cos(yaw) + rand_xy(mt);
   std::normal_distribution<> rand_yaw(0, odom_yaw_noise);
-  quaternionTFToMsg(tf::createQuaternionFromYaw(get_yaw(pose.pose.orientation) + yaw + rand_yaw(mt)), pose.pose.orientation); 
+  quaternionTFToMsg(tf::createQuaternionFromYaw(yaw + dtheta + rand_yaw(mt)), pose.pose.orientation); 
 }
