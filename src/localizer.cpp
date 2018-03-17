@@ -114,7 +114,7 @@ int main(int argc, char** argv)
     local_nh.getParam("ODOM_XY_NOISE", odom_xy_noise);
     local_nh.getParam("ODOM_YAW_NOISE", odom_yaw_noise);
     local_nh.getParam("RANGE_MAX", range_max);
-    local_nh.getParam("MATCHIING_STEP", matching_step);
+    local_nh.getParam("MATCHING_STEP", matching_step);
 
     std::srand(time(NULL));
 
@@ -184,7 +184,7 @@ int main(int argc, char** argv)
           Eigen::Vector3d obstacle_laser;//laserフレームから見たある障害物の位置
           obstacle_laser(2) = 1;
           //std::cout << "p:" << particles[i].pose.pose.position.x << ", " << particles[i].pose.pose.position.y << ", " << get_yaw(particles[i].pose.pose.orientation) << std::endl;
-          for(int angle=0;angle<720;angle++){
+          for(int angle=0;angle<720;angle+=matching_step){
             laser_data_from_map.ranges[angle] = -1;
             float _angle = angle*laser_data_from_scan.angle_increment - M_PI/2.0;
             //std::cout << _angle << "[rad]" << std::endl;
@@ -209,7 +209,7 @@ int main(int argc, char** argv)
           }
           //laser_pub.publish(laser_data_from_map);
           float rss = 0;//残差平方和
-          for(int angle=0;angle<720;angle++){
+          for(int angle=0;angle<720;angle+=matching_step){
             rss += pow(laser_data_from_map.ranges[angle] - laser_data_from_scan.ranges[angle], 2); 
           }
           particles[i].likelihood =  exp(-pow(rss / POSITION_SIGMA, 2) / 2.0);
