@@ -126,6 +126,8 @@ int main(int argc, char** argv)
 
     ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/chibi18/estimated_pose", 100);
 
+    ros::Publisher laser_pub = nh.advertise<sensor_msgs::LaserScan>("/chibi18/debug/scan", 100);
+
     tf::TransformBroadcaster map_broadcaster;
     tf::TransformListener listener;
 
@@ -143,7 +145,7 @@ int main(int argc, char** argv)
         float dy = 0.0;
         float dtheta = 0.0;
         geometry_msgs::Quaternion qc, qp;
-        
+        /* 
         try{
           std::cout << "lookup transform odom to base_link" << std::endl;
           listener.lookupTransform("odom", "base_link", ros::Time(0), current_base_link_pose);
@@ -164,12 +166,13 @@ int main(int argc, char** argv)
           //particles[i].move(0.01, 0.01, 0.05);//適当
           particles[i].move(dx, dy, dtheta);
         }
-
+        */
         //measurement & likelihood
         
         std::cout << "calculate likelihood" << std::endl;
         sensor_msgs::LaserScan laser_data_from_map;
         laser_data_from_map = laser_data_from_scan; 
+        laser_data_from_map.header.frame_id = "map";
         for(int i=0;i<N;i++){
           std::cout << "N=" << i << std::endl;
           Eigen::Vector3d obstacle_map;//mapフレームから見たある障害物の位置
@@ -180,15 +183,22 @@ int main(int argc, char** argv)
                           0, 0, 1;
           Eigen::Vector3d obstacle_laser;//laserフレームから見たある障害物の位置
           obstacle_laser(2) = 1;
+          std::cout << "p:" << particles[i].pose.pose.position.x << ", " << particles[i].pose.pose.position.y << ", " << get_yaw(particles[i].pose.pose.orientation) << std::endl;
           for(int angle=0;angle<720;angle++){
             laser_data_from_map.ranges[angle] = -1;
+            float _angle = angle*laser_data_from_scan.angle_increment - M_PI/2.0;
+            //std::cout << _angle << "[rad]" << std::endl;
             for(float distance=0;distance<range_max;distance+=map.info.resolution){
-              float _angle = angle*laser_data_from_scan.angle_increment - M_PI/2.0;
               obstacle_laser(0) = distance * cos(_angle);
               obstacle_laser(1) = distance * sin(_angle); 
               obstacle_map = laser_to_map * obstacle_laser;
               if(get_grid_data(obstacle_map(0), obstacle_map(1)) == 100){
-                laser_data_from_map.ranges[angle] = sqrt(pow(obstacle_map(0), 2) + pow(obstacle_map(1), 2));
+                laser_data_from_map.ranges[angle] = sqrt(pow(obstacle_laser(0), 2) + pow(obstacle_laser(1), 2));
+                int _x = get_index(obstacle_map(0), obstacle_map(1)) % map.info.width;
+                float __x = _x * map.info.resolution+map.info.origin.position.x;
+                int _y = (get_index(obstacle_map(0), obstacle_map(1)) - _x) / map.info.width;
+                float __y = _y * map.info.resolution+map.info.origin.position.y;
+                //std::cout << obstacle_map(0) << ", " << obstacle_map(1) << ", " << get_index(obstacle_map(0), obstacle_map(1)) << ", " << __x  << ", " << __y << ", " << get_index(__x, __y) << std::endl;
                 break;
               }
             } 
@@ -197,50 +207,15 @@ int main(int argc, char** argv)
             }
             //std::cout << angle << ":" << laser_data_from_map.ranges[angle] << std::endl;
           }
+          laser_pub.publish(laser_data_from_map);
           float rss = 0;//残差平方和
           for(int angle=0;angle<720;angle++){
             rss += pow(laser_data_from_map.ranges[angle] - laser_data_from_scan.ranges[angle], 2); 
           }
           particles[i].likelihood =  exp(-pow(rss / POSITION_SIGMA, 2) / 2.0);
+          std::cout << rss << ", " << particles[i].likelihood << std::endl;
         }
         
-        /*
-        pcl::PointCloud<pcl::PointXYZ> pcl_from_scan;
-        pcl::fromROSMsg(data_from_scan, pcl_from_scan);
-        pcl::PointCloud<pcl::PointXYZ> pcl_from_map;
-        sensor_msgs::PointCloud2 data_from_map;
-        sensor_msgs::LaserScan laser_data_from_map;
-        laser_data_from_map = laser_data_from_scan; 
-        for(int i=0;i<N;i++){
-          //
-          // マップから点を取得する処理を書くこと
-          //
-          for(float theta=0;theta<M_PI;theta+=M_PI/720.0){
-            if(theta<M_PI/2.0){
-              
-            }else if(theta>M_PI/2.0){
-
-            }else{
-
-            }
-          }
-          projector.projectLaser(laser_data_from_map, data_from_map);
-          pcl::fromROSMsg(data_from_map, pcl_from_scan);
-
-          pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
-          icp.setInputSource(pcl_from_scan.makeShared());
-          icp.setInputTarget(pcl_from_map.makeShared());
-
-          pcl::PointCloud<pcl::PointXYZ> output;
-          icp.align(output);
-
-          Eigen::Matrix4d m = Eigen::Matrix4d::Identity ();
-          m = icp.getFinalTransformation ().cast<double>();
-          float position_error = sqrt(pow(m(0, 3), 2) + pow(m(1, 3), 2));
-          float orientation_error = acos(m(0));
-          particles[i].likelihood = exp(-pow(position_error / POSITION_SIGMA, 2) / 2.0) + exp(-pow(orientation_error / ORIENTATION_SIGMA, 2) / 2.0);
-        }
-        */
         float sum = 0;
         for(int i=0;i<N;i++){
           sum += particles[i].likelihood;
@@ -331,7 +306,7 @@ int get_grid_data(float x, float y)
 
 int get_index(float x, float y)
 {
-  /*
+  
   if(x > 0){
     x = ((int)(10*(2*x)+1))/20.0;
   }else{
@@ -342,7 +317,7 @@ int get_index(float x, float y)
   }else{
     y = ((int)(10*(2*y)-1))/20.0;
   }
-  */
+  
   int index = int((map.info.width*(y-map.info.origin.position.y)+(x-map.info.origin.position.x))/map.info.resolution);
   //std::cout << index << " " << x << " " << y <<std::endl;
   return index;

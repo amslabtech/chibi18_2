@@ -1,11 +1,11 @@
 <launch>
    
-   <arg name="PARTICLE_N" default="10"/>
-   <arg name="POSITION_SIGMA" default="7500.0"/>
+   <arg name="PARTICLE_N" default="1"/>
+   <arg name="POSITION_SIGMA" default="1000.0"/>
    <arg name="ORIENTATION_SIGMA" default="0.3"/>
-   <arg name="_INIT_X_COVARIANCE" default="0.5"/>
-   <arg name="_INIT_Y_COVARIANCE" default="0.5"/>
-   <arg name="_INIT_YAW_COVARIANCE" default="0.5"/>
+   <arg name="_INIT_X_COVARIANCE" default="0.0"/>
+   <arg name="_INIT_Y_COVARIANCE" default="0.0"/>
+   <arg name="_INIT_YAW_COVARIANCE" default="0.0"/>
    <arg name="_INIT_X" default="-1.0"/>
    <arg name="_INIT_Y" default="0"/>
    <arg name="_INIT_YAW" default="0.0"/>
