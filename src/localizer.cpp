@@ -139,6 +139,8 @@ int main(int argc, char** argv)
     transform.child_frame_id = "odom";
 
     set_transform(init_x, init_y, init_yaw);//適当
+    transform.header.stamp = ros::Time::now();
+    map_broadcaster.sendTransform(transform);
 
     while(ros::ok()){
       if(map_subscribed && !laser_data_from_scan.ranges.empty()){
@@ -275,20 +277,18 @@ int main(int argc, char** argv)
         std::cout << "modfy frame odom" << std::endl;
         transform.header.stamp = ros::Time::now();
         /*
-        transform.transform.translation.x += estimated_pose.pose.position.x - current_base_link_pose.getOrigin().x();
-        transform.transform.translation.y += estimated_pose.pose.position.y - current_base_link_pose.getOrigin().y();
-        float d_theta = get_yaw(estimated_pose.pose.orientation) - get_yaw(qc);
-        tf::Quaternion tf_q = tf::createQuaternionFromYaw(d_theta);
-        geometry_msgs::Quaternion g_q;
-        quaternionTFToMsg(tf_q, g_q);
-        transform.transform.rotation.x += g_q.x;
-        transform.transform.rotation.y += g_q.y;
-        transform.transform.rotation.z += g_q.z;
-        transform.transform.rotation.w += g_q.w;
+        tf::StampedTransform b_m_tf;
+        listener.lookupTransform("map", "base_link", ros::Time(0), b_m_tf);
+        geometry_msgs::TransformStamped b_m_msg;
+        transformStampedTFToMsg(b_m_tf, b_m_msg);
+        transform.transform.translation.x += estimated_pose.pose.position.x - b_m_msg.transform.translation.x;
+        transform.transform.translation.y += estimated_pose.pose.position.y - b_m_msg.transform.translation.y;
+        float d_theta = get_yaw(estimated_pose.pose.orientation) - get_yaw(b_m_msg.transform.rotation);
+        tf::Quaternion tf_q = tf::createQuaternionFromYaw(d_theta + get_yaw(transform.transform.rotation));
+        quaternionTFToMsg(tf_q, transform.transform.rotation);
         */
         map_broadcaster.sendTransform(transform);
         std::cout << "from map to odom transform broadcasted" << std::endl;
-        
       }
       ros::spinOnce();
       loop_rate.sleep();
