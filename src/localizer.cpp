@@ -174,7 +174,7 @@ int main(int argc, char** argv)
         laser_data_from_map = laser_data_from_scan; 
         laser_data_from_map.header.frame_id = "map";
         for(int i=0;i<N;i++){
-          std::cout << "N=" << i << std::endl;
+          //std::cout << "N=" << i << std::endl;
           Eigen::Vector3d obstacle_map;//mapフレームから見たある障害物の位置
           obstacle_map(2) = 1;
           Eigen::Matrix3d laser_to_map;//laserフレームからmapフレームへの変換
@@ -213,7 +213,7 @@ int main(int argc, char** argv)
             rss += pow(laser_data_from_map.ranges[angle] - laser_data_from_scan.ranges[angle], 2); 
           }
           particles[i].likelihood =  exp(-pow(rss / POSITION_SIGMA, 2) / 2.0);
-          std::cout << rss << ", " << particles[i].likelihood << std::endl;
+          //std::cout << rss << ", " << particles[i].likelihood << std::endl;
         }
         
         float sum = 0;
@@ -254,17 +254,16 @@ int main(int argc, char** argv)
         std::cout << "calculate estimated_pose" << std::endl;
         geometry_msgs::PoseStamped estimated_pose;
         estimated_pose.header.frame_id = "map";
+        float sum_angle = 0;
         for(int i=0;i<N;i++){
           estimated_pose.pose.position.x += particles[i].likelihood * particles[i].pose.pose.position.x; 
           estimated_pose.pose.position.y += particles[i].likelihood * particles[i].pose.pose.position.y; 
-          tf::Quaternion temp_tf_q = tf::createQuaternionFromYaw((particles[i].likelihood) * get_yaw(particles[i].pose.pose.orientation));
-          geometry_msgs::Quaternion temp_g_q;
-          quaternionTFToMsg(temp_tf_q, temp_g_q);
-          estimated_pose.pose.orientation.x = temp_g_q.x;
-          estimated_pose.pose.orientation.y = temp_g_q.y;
-          estimated_pose.pose.orientation.z = temp_g_q.z;
-          estimated_pose.pose.orientation.w = temp_g_q.w;
-        }
+          sum_angle += particles[i].likelihood * get_yaw(particles[i].pose.pose.orientation);
+        } 
+        tf::Quaternion temp_tf_q = tf::createQuaternionFromYaw(sum_angle);
+        geometry_msgs::Quaternion temp_g_q;
+        quaternionTFToMsg(temp_tf_q, temp_g_q);
+        estimated_pose.pose.orientation = temp_g_q;
         pose_pub.publish(estimated_pose);
 
         //odomの補正を計算
