@@ -1,7 +1,7 @@
 <launch>
    
    <arg name="PARTICLE_N" default="100"/>
-   <arg name="POSITION_SIGMA" default="1000.0"/>
+   <arg name="POSITION_SIGMA" default="300.0"/>
    <arg name="ORIENTATION_SIGMA" default="0.3"/>
    <arg name="_INIT_X_COVARIANCE" default="0.3"/>
    <arg name="_INIT_Y_COVARIANCE" default="0.3"/>
@@ -9,8 +9,9 @@
    <arg name="_INIT_X" default="-1.2"/>
    <arg name="_INIT_Y" default="0"/>
    <arg name="_INIT_YAW" default="0.0"/>
-   <arg name="ODOM_XY_NOISE" default="0.02"/>
-   <arg name="ODOM_YAW_NOISE" default="0.10"/>
+   <arg name="ODOM_X_NOISE" default="0.10"/>
+   <arg name="ODOM_Y_NOISE" default="0.02"/>
+   <arg name="ODOM_YAW_NOISE" default="0.20"/>
    <arg name="RANGE_MAX" default="6.0"/>
    <arg name="MATCHING_STEP" default="20"/>
 
@@ -24,7 +25,8 @@
     <param name="INIT_X" value="$(arg _INIT_X)"/>
     <param name="INIT_Y" value="$(arg _INIT_Y)"/>
     <param name="INIT_YAW" value="$(arg _INIT_YAW)"/>
-    <param name="ODOM_XY_NOISE" value="$(arg ODOM_XY_NOISE)"/>
+    <param name="ODOM_X_NOISE" value="$(arg ODOM_X_NOISE)"/>
+    <param name="ODOM_Y_NOISE" value="$(arg ODOM_Y_NOISE)"/>
     <param name="ODOM_YAW_NOISE" value="$(arg ODOM_YAW_NOISE)"/>
     <param name="RANGE_MAX" value="$(arg RANGE_MAX)"/>
     <param name="MATCHING_STEP" value="$(arg MATCHING_STEP)"/>
