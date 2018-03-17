@@ -213,6 +213,9 @@ int main(int argc, char** argv)
             rss += pow(laser_data_from_map.ranges[angle] - laser_data_from_scan.ranges[angle], 2); 
           }
           particles[i].likelihood =  exp(-pow(rss / POSITION_SIGMA, 2) / 2.0);
+          if((int)get_grid_data(particles[i].pose.pose.position.x, particles[i].pose.pose.position.y) != 0){
+            particles[i].likelihood = 0;
+          }
           //std::cout << rss << ", " << particles[i].likelihood << std::endl;
         }
         

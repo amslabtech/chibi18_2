@@ -1,10 +1,10 @@
 <launch>
    
-   <arg name="PARTICLE_N" default="30"/>
+   <arg name="PARTICLE_N" default="100"/>
    <arg name="POSITION_SIGMA" default="1000.0"/>
    <arg name="ORIENTATION_SIGMA" default="0.3"/>
-   <arg name="_INIT_X_COVARIANCE" default="0.5"/>
-   <arg name="_INIT_Y_COVARIANCE" default="0.5"/>
+   <arg name="_INIT_X_COVARIANCE" default="0.3"/>
+   <arg name="_INIT_Y_COVARIANCE" default="0.3"/>
    <arg name="_INIT_YAW_COVARIANCE" default="0.2"/>
    <arg name="_INIT_X" default="-1.2"/>
    <arg name="_INIT_Y" default="0"/>
@@ -12,7 +12,7 @@
    <arg name="ODOM_XY_NOISE" default="0.02"/>
    <arg name="ODOM_YAW_NOISE" default="0.10"/>
    <arg name="RANGE_MAX" default="6.0"/>
-   <arg name="MATCHING_STEP" default="12"/>
+   <arg name="MATCHING_STEP" default="20"/>
 
   <node pkg="chibi18_control" name="localizer" type="localizer" output="screen">
     <param name="N" value="$(arg PARTICLE_N)"/>
