@@ -66,6 +66,8 @@ int get_grid_data(float, float);
 int get_index(float, float);
 void set_transform(float, float, float);
 float get_square(float);
+bool map_valid(int, int);
+float get_range_from_map(int, float, float, float);
 
 void laser_callback(const sensor_msgs::LaserScanConstPtr& msg)
 {
@@ -144,13 +146,13 @@ int main(int argc, char** argv)
     map_broadcaster.sendTransform(transform);
 
     while(ros::ok()){
+      ros::Time begin = ros::Time::now();
       if(map_subscribed && !laser_data_from_scan.ranges.empty()){
         //pridiction
         float dx = 0.0;
         float dy = 0.0;
         float dtheta = 0.0;
         geometry_msgs::Quaternion qc, qp;
-         
         try{
           std::cout << "lookup transform odom to base_link" << std::endl;
           listener.lookupTransform("odom", "base_link", ros::Time(0), current_base_link_pose);
@@ -161,24 +163,22 @@ int main(int argc, char** argv)
           dy = dx * -sin(yaw) + dy * cos(yaw);
           dy = 0;//test
           std::cout << dx << ", " << dy << ", " << yaw << std::endl;
-          std::cout << "calc quat" << std::endl;
+          //std::cout << "calc quat" << std::endl;
           quaternionTFToMsg(current_base_link_pose.getRotation(), qc);
           quaternionTFToMsg(previous_base_link_pose.getRotation(), qp);
           dtheta = get_yaw(qc) - get_yaw(qp);
           previous_base_link_pose = current_base_link_pose; 
-          std::cout << "calc end" << std::endl;
+          //std::cout << "calc end" << std::endl;
         }catch(tf::TransformException &ex){
           std::cout << ex.what() << std::endl;
           //continue;
         }
-         
         for(int i=0;i<particles.size();i++){
           //particles[i].move(0.01, 0.01, 0.05);//適当
           particles[i].move(dx, dy, dtheta);
         }
         
         //measurement & likelihood
-        
         std::cout << "calculate likelihood" << std::endl;
         sensor_msgs::LaserScan laser_data_from_map;
         laser_data_from_map = laser_data_from_scan; 
@@ -195,28 +195,11 @@ int main(int argc, char** argv)
           Eigen::Vector3d obstacle_laser;//laserフレームから見たある障害物の位置
           obstacle_laser(2) = 1;
           //std::cout << "p:" << particles[i].pose.pose.position.x << ", " << particles[i].pose.pose.position.y << ", " << get_yaw(particles[i].pose.pose.orientation) << std::endl;
+          ros::Time measurement = ros::Time::now();//*********************************** 
+
+          
           for(int angle=0;angle<720;angle+=matching_step){
-            laser_data_from_map.ranges[angle] = -1;
-            float _angle = angle*laser_data_from_scan.angle_increment - M_PI/2.0;
-            //std::cout << _angle << "[rad]" << std::endl;
-            for(float distance=0;distance<range_max;distance+=map.info.resolution){
-              obstacle_laser(0) = distance * cos(_angle);
-              obstacle_laser(1) = distance * sin(_angle); 
-              obstacle_map = laser_to_map * obstacle_laser;
-              if(get_grid_data(obstacle_map(0), obstacle_map(1)) == 100){
-                laser_data_from_map.ranges[angle] = sqrt(get_square(obstacle_laser(0)) + get_square(obstacle_laser(1)));
-                int _x = get_index(obstacle_map(0), obstacle_map(1)) % map.info.width;
-                float __x = _x * map.info.resolution+map.info.origin.position.x;
-                int _y = (get_index(obstacle_map(0), obstacle_map(1)) - _x) / map.info.width;
-                float __y = _y * map.info.resolution+map.info.origin.position.y;
-                //std::cout << obstacle_map(0) << ", " << obstacle_map(1) << ", " << get_index(obstacle_map(0), obstacle_map(1)) << ", " << __x  << ", " << __y << ", " << get_index(__x, __y) << std::endl;
-                break;
-              }
-            } 
-            if(laser_data_from_map.ranges[angle] < 0){
-              laser_data_from_map.ranges[angle] = range_max;
-            }
-            //std::cout << angle << ":" << laser_data_from_map.ranges[angle] << std::endl;
+            laser_data_from_map.ranges[angle] = get_range_from_map(angle, particles[i].pose.pose.position.x, particles[i].pose.pose.position.y, p_yaw);
           }
           //laser_pub.publish(laser_data_from_map);
           float rss = 0;//残差平方和
@@ -229,7 +212,6 @@ int main(int argc, char** argv)
           }
           //std::cout << rss << ", " << particles[i].likelihood << std::endl;
         }
-        
         float sum = 0;
         for(int i=0;i<N;i++){
           sum += particles[i].likelihood;
@@ -297,6 +279,7 @@ int main(int argc, char** argv)
         map_broadcaster.sendTransform(transform);
         std::cout << "from map to odom transform broadcasted" << std::endl;
       }
+      std::cout << "loop:" << ros::Time::now() - begin << "[s]" << std::endl;
       ros::spinOnce();
       loop_rate.sleep();
     }
@@ -382,4 +365,82 @@ void Particle::move(float dx, float dy, float dtheta)
 float get_square(float value)
 {
   return value * value;
+}
+
+bool map_valid(int i, int j)
+{
+  return (i>=0) && (i<map.info.width) && (j>=0) && (j<map.info.height);
+}
+
+
+float get_range_from_map(int angle, float ox, float oy, float yaw)
+{
+  int index0 = get_index(ox, oy);
+  int x0 = index0 % map.info.width; 
+  int y0 = (index0 - x0) / map.info.width; 
+  int x = 0, y = 0;
+  float _angle = angle*laser_data_from_scan.angle_increment - M_PI/2.0;
+  int index1 = get_index(ox + range_max * cos(yaw + _angle), oy + range_max * sin(yaw + _angle));
+  int x1 = index1 % map.info.width;
+  int y1 = (index1 - x1) / map.info.width;
+  int steep;
+  int xstep, ystep;
+  int temp;
+  int deltax, deltay, error, deltaerr; 
+  if(abs(y1-y0) > abs(x1-x0))
+    steep = 1;
+  else
+    steep = 0;
+
+  if(steep){
+    temp = x0;
+    x0 = y0;
+    y0 = temp;
+
+    temp = x1;
+    x1 = y1;
+    y1 = temp;
+  }
+  deltax = abs(x1-x0);
+  deltay = abs(y1-y0);
+  error = 0;
+  deltaerr = deltay;
+  x = x0;
+  y = y0;
+  if(x0 < x1)
+    xstep = 1;
+  else
+    xstep = -1;
+  if(y0 < y1)
+    ystep = 1;
+  else
+    ystep = -1;
+
+  if(steep){
+    if(!map_valid(y, x) || ((int)(map.data[x * map.info.width + y])!=0)){
+      return sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0)) * map.info.resolution;
+    }
+  }else{
+    if(!map_valid(x, y) || ((int)(map.data[y * map.info.width + x])!=0)){
+      return sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0)) * map.info.resolution;
+    }
+  }
+  while(x != (x1 + xstep * 1)){
+    x += xstep;
+    error += deltaerr;
+    if(2*error >= deltax){
+      y += ystep;
+      error -= deltax;
+    }
+    if(steep){
+      if(!map_valid(y, x) || ((int)(map.data[x * map.info.width + y])!=0)){
+        return sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0)) * map.info.resolution;
+      }
+    }else{
+      if(!map_valid(x, y) || ((int)(map.data[y * map.info.width + x])!=0)){
+        return sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0)) * map.info.resolution;
+      }
+    }
+  } 
+  return range_max;
 }
