@@ -155,6 +155,11 @@ int main(int argc, char** argv)
           listener.lookupTransform("odom", "base_link", ros::Time(0), current_base_link_pose);
           dx = current_base_link_pose.getOrigin().x() - previous_base_link_pose.getOrigin().x();
           dy = current_base_link_pose.getOrigin().y() - previous_base_link_pose.getOrigin().y();
+          float yaw = getYaw(previous_base_link_pose.getRotation());
+          dx = dx * cos(yaw) + dy * sin(yaw);
+          dy = dx * -sin(yaw) + dy * cos(yaw);
+          dy = 0;//test
+          std::cout << dx << ", " << dy << ", " << yaw << std::endl;
           std::cout << "calc quat" << std::endl;
           quaternionTFToMsg(current_base_link_pose.getRotation(), qc);
           quaternionTFToMsg(previous_base_link_pose.getRotation(), qp);
@@ -360,7 +365,7 @@ void Particle::initialize(int width, int height, float resolution, geometry_msgs
 
 void Particle::move(float dx, float dy, float dtheta)
 {
-  //引数はodomから見たbase_linkの動き
+  //引数はbase_linkの正面方向をxとした動き
   float yaw = get_yaw(pose.pose.orientation);
   std::normal_distribution<> rand_x(0, odom_x_noise);
   dx += rand_x(mt);
