@@ -46,6 +46,8 @@ float odom_x_noise;
 float odom_y_noise;
 float range_max;
 int matching_step;
+float update_distance;
+float update_angle;
 nav_msgs::OccupancyGrid map;
 bool map_subscribed = false;
 std::vector<Particle>  particles;
@@ -55,6 +57,10 @@ tf::StampedTransform previous_base_link_pose;
 sensor_msgs::LaserScan laser_data_from_scan;
 sensor_msgs::PointCloud2 data_from_scan;
 laser_geometry::LaserProjection projector;
+geometry_msgs::PoseStamped estimated_pose;
+bool calculate_flag = true;
+float distance_sum = 0;
+float angle_sum = 0;
 
 //パーティクル配置用
 std::random_device rnd;
@@ -118,6 +124,8 @@ int main(int argc, char** argv)
     local_nh.getParam("ODOM_YAW_NOISE", odom_yaw_noise);
     local_nh.getParam("RANGE_MAX", range_max);
     local_nh.getParam("MATCHING_STEP", matching_step);
+    local_nh.getParam("UPDATE_DISTANCE", update_distance);
+    local_nh.getParam("UPDATE_ANGLE", update_angle);
 
     std::srand(time(NULL));
 
@@ -164,85 +172,94 @@ int main(int argc, char** argv)
           std::cout << ex.what() << std::endl;
           //continue;
         }
-        for(int i=0;i<particles.size();i++){
-          //particles[i].move(0.01, 0.01, 0.05);//適当
-          particles[i].move(dx, dy, dtheta);
+        distance_sum += fabs(dx);
+        angle_sum += fabs(dtheta);
+        if(distance_sum > update_distance){
+          distance_sum = 0;
+          calculate_flag = true;
+        }else if(angle_sum > update_angle){
+          angle_sum = 0;
+          calculate_flag = true;
         }
+        if(calculate_flag){
+          calculate_flag = false;
+          for(int i=0;i<particles.size();i++){
+            particles[i].move(dx, dy, dtheta);
+          }
         
-        //measurement & likelihood
-        std::cout << "calculate likelihood" << std::endl;
-        sensor_msgs::LaserScan laser_data_from_map;
-        laser_data_from_map = laser_data_from_scan; 
-        laser_data_from_map.header.frame_id = "map";
-        for(int i=0;i<N;i++){
-          float p_yaw = get_yaw(particles[i].pose.pose.orientation);
-          for(int angle=0;angle<720;angle+=matching_step){
-            laser_data_from_map.ranges[angle] = get_range_from_map(angle, particles[i].pose.pose.position.x, particles[i].pose.pose.position.y, p_yaw);
+          //measurement & likelihood
+          std::cout << "calculate likelihood" << std::endl;
+          sensor_msgs::LaserScan laser_data_from_map;
+          laser_data_from_map = laser_data_from_scan; 
+          laser_data_from_map.header.frame_id = "map";
+          for(int i=0;i<N;i++){
+            float p_yaw = get_yaw(particles[i].pose.pose.orientation);
+            for(int angle=0;angle<720;angle+=matching_step){
+              laser_data_from_map.ranges[angle] = get_range_from_map(angle, particles[i].pose.pose.position.x, particles[i].pose.pose.position.y, p_yaw);
+            }
+            //laser_pub.publish(laser_data_from_map);
+            float rss = 0;//残差平方和
+            for(int angle=0;angle<720;angle+=matching_step){
+              rss += get_square(laser_data_from_map.ranges[angle] - laser_data_from_scan.ranges[angle]); 
+            }
+            particles[i].likelihood =  exp(-get_square(rss / POSITION_SIGMA) / 2.0);
+            if((int)get_grid_data(particles[i].pose.pose.position.x, particles[i].pose.pose.position.y) != 0){
+              //particles[i].likelihood = 0;
+            }
+            //std::cout << rss << ", " << particles[i].likelihood << std::endl;
           }
-          //laser_pub.publish(laser_data_from_map);
-          float rss = 0;//残差平方和
-          for(int angle=0;angle<720;angle+=matching_step){
-            rss += get_square(laser_data_from_map.ranges[angle] - laser_data_from_scan.ranges[angle]); 
+          float sum = 0;
+          for(int i=0;i<N;i++){
+            sum += particles[i].likelihood;
           }
-          particles[i].likelihood =  exp(-get_square(rss / POSITION_SIGMA) / 2.0);
-          if((int)get_grid_data(particles[i].pose.pose.position.x, particles[i].pose.pose.position.y) != 0){
-            particles[i].likelihood = 0;
+          for(int i=0;i<N;i++){
+            particles[i].likelihood /= sum;
           }
-          //std::cout << rss << ", " << particles[i].likelihood << std::endl;
-        }
-        float sum = 0;
-        for(int i=0;i<N;i++){
-          sum += particles[i].likelihood;
-        }
-        for(int i=0;i<N;i++){
-          particles[i].likelihood /= sum;
-        }
 
-        //resampling
-        std::cout << "resampling" << std::endl;
-        std::vector<Particle> new_particles;
-        int max_index = 0;
-        for(int i=0;i<N;i++){
-          if(particles[i].likelihood > particles[max_index].likelihood){
-            max_index = i;
+          //resampling
+          std::cout << "resampling" << std::endl;
+          std::vector<Particle> new_particles;
+          int max_index = 0;
+          for(int i=0;i<N;i++){
+            if(particles[i].likelihood > particles[max_index].likelihood){
+              max_index = i;
+            }
           }
-        }
-        float beta = 0;
-        int index = rand() % N;
-        for(int i=0;i<N;i++){
-          beta += (rand() % N) / (float)N * 2 * particles[max_index].likelihood;
-          while(beta > particles[index].likelihood){
-            beta -= particles[index].likelihood;
-            index = (1 + index) % N;
+          float beta = 0;
+          int index = rand() % N;
+          for(int i=0;i<N;i++){
+            beta += (rand() % N) / (float)N * 2 * particles[max_index].likelihood;
+            while(beta > particles[index].likelihood){
+              beta -= particles[index].likelihood;
+              index = (1 + index) % N;
+            }
+            new_particles.push_back(particles[index]);
           }
-          new_particles.push_back(particles[index]);
-        }
-        particles = new_particles;
+          particles = new_particles;
         
-        for(int i=0;i<N;i++){
-          poses.poses[i] = particles[i].pose.pose;
-        }
-        poses_pub.publish(poses);
+          for(int i=0;i<N;i++){
+            poses.poses[i] = particles[i].pose.pose;
+          }
+          poses_pub.publish(poses);
         
-        //推定値の算出
-        std::cout << "calculate estimated_pose" << std::endl;
-        geometry_msgs::PoseStamped estimated_pose;
-        estimated_pose.header.frame_id = "map";
-        /*
-        float sum_angle = 0;
-        for(int i=0;i<N;i++){
-          estimated_pose.pose.position.x += particles[i].likelihood * particles[i].pose.pose.position.x; 
-          estimated_pose.pose.position.y += particles[i].likelihood * particles[i].pose.pose.position.y; 
-          sum_angle += particles[i].likelihood * get_yaw(particles[i].pose.pose.orientation);
-        } 
-        tf::Quaternion temp_tf_q = tf::createQuaternionFromYaw(sum_angle);
-        geometry_msgs::Quaternion temp_g_q;
-        quaternionTFToMsg(temp_tf_q, temp_g_q);
-        estimated_pose.pose.orientation = temp_g_q;
-        */
-        estimated_pose = particles[max_index].pose;
-        pose_pub.publish(estimated_pose);
-
+          //推定値の算出
+          std::cout << "calculate estimated_pose" << std::endl;
+          estimated_pose.header.frame_id = "map";
+          /*
+          float sum_angle = 0;
+          for(int i=0;i<N;i++){
+            estimated_pose.pose.position.x += particles[i].likelihood * particles[i].pose.pose.position.x; 
+            estimated_pose.pose.position.y += particles[i].likelihood * particles[i].pose.pose.position.y; 
+            sum_angle += particles[i].likelihood * get_yaw(particles[i].pose.pose.orientation);
+          } 
+          tf::Quaternion temp_tf_q = tf::createQuaternionFromYaw(sum_angle);
+          geometry_msgs::Quaternion temp_g_q;
+          quaternionTFToMsg(temp_tf_q, temp_g_q);
+          estimated_pose.pose.orientation = temp_g_q;
+          */
+          estimated_pose = particles[max_index].pose;
+          pose_pub.publish(estimated_pose);
+        }
         //odomの補正を計算
         std::cout << "modfy frame odom" << std::endl;
         try{
@@ -251,7 +268,7 @@ int main(int argc, char** argv)
           _transform.setOrigin(tf::Vector3(estimated_pose.pose.position.x, estimated_pose.pose.position.y, 0.0));
           _transform.setRotation(tf::createQuaternionFromYaw(get_yaw(estimated_pose.pose.orientation)));
           tf::Stamped<tf::Pose> tf_stamped(_transform.inverse(), laser_data_from_scan.header.stamp, "base_link");
-          tf::Stamped<tf::Pose> odom_to_map;
+          tf::Stamped<tf::Pose> odom_to_map; 
           listener.transformPose("odom", tf_stamped, odom_to_map);
           tf::Transform latest_tf = tf::Transform(tf::Quaternion(odom_to_map.getRotation()), tf::Point(odom_to_map.getOrigin()));
           tf::StampedTransform temp_tf_stamped(latest_tf.inverse(), laser_data_from_scan.header.stamp, "map", "odom");
@@ -262,6 +279,7 @@ int main(int argc, char** argv)
         }
         std::cout << "from map to odom transform broadcasted" << std::endl;
       }
+      
       std::cout << "loop:" << ros::Time::now() - begin << "[s]" << std::endl;
       ros::spinOnce();
       loop_rate.sleep();
