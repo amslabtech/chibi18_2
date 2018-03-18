@@ -137,14 +137,14 @@ int main(int argc, char** argv)
     tf::TransformListener listener;
 
     ros::Rate loop_rate(10);
-
+    /*
     transform.header.frame_id = "map";
     transform.child_frame_id = "odom";
 
     set_transform(init_x, init_y, init_yaw);//適当
     transform.header.stamp = ros::Time::now();
     map_broadcaster.sendTransform(transform);
-
+    */
     while(ros::ok()){
       ros::Time begin = ros::Time::now();
       if(map_subscribed && !laser_data_from_scan.ranges.empty()){
@@ -250,6 +250,7 @@ int main(int argc, char** argv)
         std::cout << "calculate estimated_pose" << std::endl;
         geometry_msgs::PoseStamped estimated_pose;
         estimated_pose.header.frame_id = "map";
+        /*
         float sum_angle = 0;
         for(int i=0;i<N;i++){
           estimated_pose.pose.position.x += particles[i].likelihood * particles[i].pose.pose.position.x; 
@@ -260,11 +261,29 @@ int main(int argc, char** argv)
         geometry_msgs::Quaternion temp_g_q;
         quaternionTFToMsg(temp_tf_q, temp_g_q);
         estimated_pose.pose.orientation = temp_g_q;
+        */
+        estimated_pose = particles[max_index].pose;
         pose_pub.publish(estimated_pose);
 
         //odomの補正を計算
         std::cout << "modfy frame odom" << std::endl;
-        transform.header.stamp = ros::Time::now();
+        try{
+          tf::StampedTransform _transform;
+          _transform.stamp_ = ros::Time::now();
+          _transform.setOrigin(tf::Vector3(estimated_pose.pose.position.x, estimated_pose.pose.position.y, 0.0));
+          _transform.setRotation(tf::createQuaternionFromYaw(get_yaw(estimated_pose.pose.orientation)));
+          tf::Stamped<tf::Pose> tf_stamped(_transform.inverse(), laser_data_from_scan.header.stamp, "base_link");
+          tf::Stamped<tf::Pose> odom_to_map;
+          listener.transformPose("odom", tf_stamped, odom_to_map);
+          tf::Transform latest_tf = tf::Transform(tf::Quaternion(odom_to_map.getRotation()), tf::Point(odom_to_map.getOrigin()));
+          tf::StampedTransform temp_tf_stamped(latest_tf.inverse(), laser_data_from_scan.header.stamp, "map", "odom");
+          map_broadcaster.sendTransform(temp_tf_stamped);
+        }catch(tf::TransformException ex){
+          std::cout << "braodcast error!" << std::endl;
+          std::cout << ex.what() << std::endl; 
+        }
+        
+        
         /*
         tf::StampedTransform b_m_tf;
         listener.lookupTransform("map", "base_link", ros::Time(0), b_m_tf);
@@ -275,8 +294,8 @@ int main(int argc, char** argv)
         float d_theta = get_yaw(estimated_pose.pose.orientation) - get_yaw(b_m_msg.transform.rotation);
         tf::Quaternion tf_q = tf::createQuaternionFromYaw(d_theta + get_yaw(transform.transform.rotation));
         quaternionTFToMsg(tf_q, transform.transform.rotation);
-        */
         map_broadcaster.sendTransform(transform);
+        */
         std::cout << "from map to odom transform broadcasted" << std::endl;
       }
       std::cout << "loop:" << ros::Time::now() - begin << "[s]" << std::endl;
