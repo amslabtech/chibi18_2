@@ -1,6 +1,6 @@
 <launch>
 
-  <node pkg="chibi18_control" name="global_planner" type="global_planner">
+  <node pkg="chibi18_control" name="global_path_planner" type="global_path_planner">
     <param name="START_X" value="0.0"/>
     <param name="START_Y" value="0.0"/>
     <param name="WAYPOINT_DISTANCE" value="3.0"/>

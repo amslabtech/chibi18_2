@@ -82,7 +82,7 @@ void pose_callback(const geometry_msgs::PoseStampedConstPtr& msg)
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "global_planner");
+  ros::init(argc, argv, "global_path_planner");
   ros::NodeHandle nh;
   ros::NodeHandle local_nh("~");
 
