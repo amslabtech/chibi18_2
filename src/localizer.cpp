@@ -50,7 +50,6 @@ nav_msgs::OccupancyGrid map;
 bool map_subscribed = false;
 std::vector<Particle>  particles;
 geometry_msgs::PoseArray poses;
-geometry_msgs::TransformStamped transform;
 tf::StampedTransform current_base_link_pose;
 tf::StampedTransform previous_base_link_pose;
 sensor_msgs::LaserScan laser_data_from_scan;
@@ -64,7 +63,6 @@ std::mt19937 mt(rnd());
 float get_yaw(geometry_msgs::Quaternion);
 int get_grid_data(float, float);
 int get_index(float, float);
-void set_transform(float, float, float);
 float get_square(float);
 bool map_valid(int, int);
 float get_range_from_map(int, float, float, float);
@@ -137,14 +135,7 @@ int main(int argc, char** argv)
     tf::TransformListener listener;
 
     ros::Rate loop_rate(10);
-    /*
-    transform.header.frame_id = "map";
-    transform.child_frame_id = "odom";
 
-    set_transform(init_x, init_y, init_yaw);//適当
-    transform.header.stamp = ros::Time::now();
-    map_broadcaster.sendTransform(transform);
-    */
     while(ros::ok()){
       ros::Time begin = ros::Time::now();
       if(map_subscribed && !laser_data_from_scan.ranges.empty()){
@@ -184,20 +175,7 @@ int main(int argc, char** argv)
         laser_data_from_map = laser_data_from_scan; 
         laser_data_from_map.header.frame_id = "map";
         for(int i=0;i<N;i++){
-          //std::cout << "N=" << i << std::endl;
-          Eigen::Vector3d obstacle_map;//mapフレームから見たある障害物の位置
-          obstacle_map(2) = 1;
-          Eigen::Matrix3d laser_to_map;//laserフレームからmapフレームへの変換
           float p_yaw = get_yaw(particles[i].pose.pose.orientation);
-          laser_to_map << cos(p_yaw), -sin(p_yaw), particles[i].pose.pose.position.x,
-                          sin(p_yaw), cos(p_yaw), particles[i].pose.pose.position.y,
-                          0, 0, 1;
-          Eigen::Vector3d obstacle_laser;//laserフレームから見たある障害物の位置
-          obstacle_laser(2) = 1;
-          //std::cout << "p:" << particles[i].pose.pose.position.x << ", " << particles[i].pose.pose.position.y << ", " << get_yaw(particles[i].pose.pose.orientation) << std::endl;
-          ros::Time measurement = ros::Time::now();//*********************************** 
-
-          
           for(int angle=0;angle<720;angle+=matching_step){
             laser_data_from_map.ranges[angle] = get_range_from_map(angle, particles[i].pose.pose.position.x, particles[i].pose.pose.position.y, p_yaw);
           }
@@ -282,20 +260,6 @@ int main(int argc, char** argv)
           std::cout << "braodcast error!" << std::endl;
           std::cout << ex.what() << std::endl; 
         }
-        
-        
-        /*
-        tf::StampedTransform b_m_tf;
-        listener.lookupTransform("map", "base_link", ros::Time(0), b_m_tf);
-        geometry_msgs::TransformStamped b_m_msg;
-        transformStampedTFToMsg(b_m_tf, b_m_msg);
-        transform.transform.translation.x += estimated_pose.pose.position.x - b_m_msg.transform.translation.x;
-        transform.transform.translation.y += estimated_pose.pose.position.y - b_m_msg.transform.translation.y;
-        float d_theta = get_yaw(estimated_pose.pose.orientation) - get_yaw(b_m_msg.transform.rotation);
-        tf::Quaternion tf_q = tf::createQuaternionFromYaw(d_theta + get_yaw(transform.transform.rotation));
-        quaternionTFToMsg(tf_q, transform.transform.rotation);
-        map_broadcaster.sendTransform(transform);
-        */
         std::cout << "from map to odom transform broadcasted" << std::endl;
       }
       std::cout << "loop:" << ros::Time::now() - begin << "[s]" << std::endl;
@@ -337,15 +301,6 @@ int get_index(float x, float y)
   int index = int((map.info.width*(y-map.info.origin.position.y)+(x-map.info.origin.position.x))/map.info.resolution);
   //std::cout << index << " " << x << " " << y <<std::endl;
   return index;
-}
-
-void set_transform(float x, float y, float yaw)
-{
-  transform.transform.translation.x = x;
-  transform.transform.translation.y = y;
-  transform.transform.translation.z = 0;
-  quaternionTFToMsg(tf::createQuaternionFromYaw(yaw), transform.transform.rotation);
- 
 }
 
 Particle::Particle(void)
