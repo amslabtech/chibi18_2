@@ -56,7 +56,16 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   map = *msg;
   std::cout << map.data.size() << std::endl;
-  
+
+  cells.resize(map.info.height*map.info.width);
+  for(int i=0;i<map.info.height*map.info.width;i++){
+    cells[i].is_wall = (map.data[i]!=0);
+    cells[i].sum = -1;
+    cells[i].parent_index = -1;
+    if(cells[i].is_wall){
+      cells[i].cost = 100;
+    }
+  }
   _cost_map.header = map.header;
   _cost_map.info = map.info;
   _cost_map.data.resize(map.info.height*map.info.width);
@@ -119,12 +128,11 @@ int main(int argc, char** argv)
   while(ros::ok()){
     int navigation_index = 0;
     if(!map.data.empty()){
-      /*
       for(int i=0;i<_cost_map.data.size();i++){
         _cost_map.data[i] = cells[i].cost;
       }
       cost_pub.publish(_cost_map);
-      */
+      
     }
     if(!global_path.poses.empty()){
       path_pub.publish(global_path);
@@ -191,18 +199,16 @@ int get_heuristic(int diff_x, int diff_y)
 
 void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStamped& _goal)
 {
-  cells.clear();
+  //cells.clear();
   open_list.clear();
   close_list.clear();
-  cells.resize(map.info.height*map.info.width);
+  //cells.resize(map.info.height*map.info.width);
   for(int i=0;i<map.info.height*map.info.width;i++){
-    cells[i].is_wall = (map.data[i]!=0);
-    //cells[i].is_available = ((int)map.data[i] > -1);
+    //cells[i].is_wall = (map.data[i]!=0);
     cells[i].sum = -1;
     cells[i].parent_index = -1;
-    //std::cout << "map.data=" << cells[i].is_available << std::endl;
     if(cells[i].is_wall){
-      cells[i].cost = 100;
+      //cells[i].cost = 100;
     }
   }
   

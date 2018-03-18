@@ -1,9 +1,12 @@
 <launch>
+  <arg name="START_X" default="0.0"/>
+  <arg name="START_Y" default="0.0"/>
+  <arg name="WAYPOINT_DISTANCE" default="3.0"/>
 
   <node pkg="chibi18_control" name="global_path_planner" type="global_path_planner">
-    <param name="START_X" value="0.0"/>
-    <param name="START_Y" value="0.0"/>
-    <param name="WAYPOINT_DISTANCE" value="3.0"/>
+    <param name="START_X" value="$(arg START_X)"/>
+    <param name="START_Y" value="$(arg START_Y)"/>
+    <param name="WAYPOINT_DISTANCE" value="$(arg WAYPOINT_DISTANCE)"/>
   </node>
 
 </launch>
