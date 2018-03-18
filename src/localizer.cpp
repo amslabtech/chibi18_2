@@ -65,6 +65,7 @@ float get_yaw(geometry_msgs::Quaternion);
 int get_grid_data(float, float);
 int get_index(float, float);
 void set_transform(float, float, float);
+float get_square(float);
 
 void laser_callback(const sensor_msgs::LaserScanConstPtr& msg)
 {
@@ -187,8 +188,9 @@ int main(int argc, char** argv)
           Eigen::Vector3d obstacle_map;//mapフレームから見たある障害物の位置
           obstacle_map(2) = 1;
           Eigen::Matrix3d laser_to_map;//laserフレームからmapフレームへの変換
-          laser_to_map << cos(get_yaw(particles[i].pose.pose.orientation)), -sin(get_yaw(particles[i].pose.pose.orientation)), particles[i].pose.pose.position.x,
-                          sin(get_yaw(particles[i].pose.pose.orientation)), cos(get_yaw(particles[i].pose.pose.orientation)), particles[i].pose.pose.position.y,
+          float p_yaw = get_yaw(particles[i].pose.pose.orientation);
+          laser_to_map << cos(p_yaw), -sin(p_yaw), particles[i].pose.pose.position.x,
+                          sin(p_yaw), cos(p_yaw), particles[i].pose.pose.position.y,
                           0, 0, 1;
           Eigen::Vector3d obstacle_laser;//laserフレームから見たある障害物の位置
           obstacle_laser(2) = 1;
@@ -202,7 +204,7 @@ int main(int argc, char** argv)
               obstacle_laser(1) = distance * sin(_angle); 
               obstacle_map = laser_to_map * obstacle_laser;
               if(get_grid_data(obstacle_map(0), obstacle_map(1)) == 100){
-                laser_data_from_map.ranges[angle] = sqrt(pow(obstacle_laser(0), 2) + pow(obstacle_laser(1), 2));
+                laser_data_from_map.ranges[angle] = sqrt(get_square(obstacle_laser(0)) + get_square(obstacle_laser(1)));
                 int _x = get_index(obstacle_map(0), obstacle_map(1)) % map.info.width;
                 float __x = _x * map.info.resolution+map.info.origin.position.x;
                 int _y = (get_index(obstacle_map(0), obstacle_map(1)) - _x) / map.info.width;
@@ -219,9 +221,9 @@ int main(int argc, char** argv)
           //laser_pub.publish(laser_data_from_map);
           float rss = 0;//残差平方和
           for(int angle=0;angle<720;angle+=matching_step){
-            rss += pow(laser_data_from_map.ranges[angle] - laser_data_from_scan.ranges[angle], 2); 
+            rss += get_square(laser_data_from_map.ranges[angle] - laser_data_from_scan.ranges[angle]); 
           }
-          particles[i].likelihood =  exp(-pow(rss / POSITION_SIGMA, 2) / 2.0);
+          particles[i].likelihood =  exp(-get_square(rss / POSITION_SIGMA) / 2.0);
           if((int)get_grid_data(particles[i].pose.pose.position.x, particles[i].pose.pose.position.y) != 0){
             particles[i].likelihood = 0;
           }
@@ -375,4 +377,9 @@ void Particle::move(float dx, float dy, float dtheta)
   pose.pose.position.x += dx * cos(yaw) - dy * sin(yaw);
   pose.pose.position.y += dx * sin(yaw) + dy * cos(yaw);
   quaternionTFToMsg(tf::createQuaternionFromYaw(yaw + dtheta + rand_yaw(mt)), pose.pose.orientation); 
+}
+
+float get_square(float value)
+{
+  return value * value;
 }
