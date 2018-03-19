@@ -17,7 +17,7 @@
   <arg name="UPDATE_DISTANCE" default="0.2"/>
   <arg name="UPDATE_ANGLE" default="0.1"/>
 
-  <node pkg="chibi18_control" name="localizer" type="localizer" output="screen">
+  <node pkg="chibi18_control" name="localizer" type="localizer">
     <param name="N" value="$(arg PARTICLE_N)"/>
     <param name="POSITION_SIGMA" value="$(arg POSITION_SIGMA)"/>
     <param name="ORIENTATION_SIGMA" value="$(arg ORIENTATION_SIGMA)"/>
