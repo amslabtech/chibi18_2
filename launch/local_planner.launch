@@ -2,7 +2,7 @@
 
   <arg name="ALPHA" default="0.045"/>
   <arg name="BETA" default="1.00"/>
-  <arg name="GAMMA" default="1.80"/>
+  <arg name="GAMMA" default="0.50"/>
   <arg name="MAX_VELOCITY" default="0.45"/>
   <arg name="MAX_ANGULAR_VELOCITY" default="2.0"/>
   <arg name="MAX_ACCELERATION" default="1.5"/>
@@ -15,7 +15,7 @@
   <arg name="OMEGA_THRESHOLD" default="0.05"/>
   <arg name="LIMIT_DISTANCE" default="1.5"/>
 
-  <node pkg="chibi18_control" name="local_planner" type="local_planner">
+  <node pkg="chibi18_control" name="local_path_planner" type="local_path_planner">
     <param name="ALPHA" value="$(arg ALPHA)"/>
     <param name="BETA" value="$(arg BETA)"/>
     <param name="GAMMA" value="$(arg GAMMA)"/>
