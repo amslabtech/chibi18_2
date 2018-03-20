@@ -25,6 +25,7 @@ float RATIO;
 float V_THRESHOLD;
 float OMEGA_THRESHOLD;
 float LIMIT_DISTANCE;
+float ROBOT_RADIUS;
 
 //評価関数の係数
 float ALPHA = 0;//heading
@@ -106,6 +107,7 @@ int main(int argc, char** argv)
     local_nh.getParam("V_THRESHOLD", V_THRESHOLD);
     local_nh.getParam("OMEGA_THRESHOLD", OMEGA_THRESHOLD);
     local_nh.getParam("LIMIT_DISTANCE", LIMIT_DISTANCE);
+    local_nh.getParam("ROBOT_RADIUS", ROBOT_RADIUS);
 
     ros::Subscriber odometry_sub = nh.subscribe("/roomba/odometry", 100, odometry_callback);
 
@@ -173,8 +175,7 @@ int main(int argc, char** argv)
 
         std::cout << "order" << std::endl;
         std::cout << velocity.twist << std::endl;
-        //std::cout << "measurement" << std::endl;
-        //std::cout << velocity_odometry << std::endl;
+        std::cout << "(" << current_odometry.pose.pose.position.x << ", " << current_odometry.pose.pose.position.y << ", " << get_yaw(current_odometry.pose.pose.orientation) << ")" << std::endl;
 
         velocity_pub.publish(velocity.twist);
         std::cout << "goal:" <<  goal.pose.position.x <<" "<< goal.pose.position.y << std::endl;
@@ -232,7 +233,6 @@ void evaluate(geometry_msgs::Twist& velocity)
   velocity.linear.x = (window_down + j * VELOCITY_RESOLUTION) / MAX_VELOCITY;
   velocity.angular.z = (window_left + k * ANGULAR_VELOCITY_RESOLUTION) / MAX_ANGULAR_VELOCITY;
   //std::cout << current_odometry.pose.pose << std::endl;
-  std::cout << "(" << current_odometry.pose.pose.position.x << ", " << current_odometry.pose.pose.position.y << ", " << get_yaw(current_odometry.pose.pose.orientation) << ")" << std::endl;
   //std::cout << velocity.linear.x << " " << velocity.angular.z << std::endl;
   //std::cout << window_left << " " << ANGULAR_VELOCITY_RESOLUTION << std::endl;
   //std::cout << velocity.angular.z << std::endl;
@@ -282,6 +282,7 @@ float calcurate_distance(float v, float omega, geometry_msgs::Pose& pose)
       object.x = _laser_data.ranges[i] * sin(LASER_RESOLUTION * i);
       object.y = _laser_data.ranges[i] * cos(LASER_RESOLUTION * i) * -1.0;
       float _distance = sqrt(pow((object.x - pose.position.x), 2) + pow((object.y - pose.position.y), 2)); 
+      _distance -= ROBOT_RADIUS;
       if(_distance < distance){
         //std::cout << "obj" << object << "pos" << position << std::endl;
         index = i;
