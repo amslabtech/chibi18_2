@@ -88,7 +88,7 @@ void stopper_callback(const std_msgs::BoolConstPtr& msg)
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "dwa_escape");
+    ros::init(argc, argv, "local_path_planner");
     ros::NodeHandle nh;
 
     ros::NodeHandle local_nh("~");
@@ -156,20 +156,22 @@ int main(int argc, char** argv)
         path_pub.publish(local_path);
 
         float distance_to_goal = sqrt(pow(goal.pose.position.x - current_odometry.pose.pose.position.x, 2) + pow(goal.pose.position.y-current_odometry.pose.pose.position.y, 2));
+        std::cout << distance_to_goal << "[m]" << std::endl;
         if(distance_to_goal < V_THRESHOLD){
           velocity.twist.linear.x *= 2*distance_to_goal;
         }
         if(distance_to_goal < OMEGA_THRESHOLD){
           velocity.twist.angular.z *= 2*distance_to_goal;
         }
-        velocity.twist.linear.x *= RATIO;
-        velocity.twist.angular.z *= (1-RATIO);
+        //velocity.twist.linear.x *= RATIO;
+        //velocity.twist.angular.z *= (1-RATIO);
 
         //stopの時
         if(!move_allowed){
           velocity.twist.linear.x = 0;
         }
 
+        std::cout << RATIO << std::endl;
         std::cout << velocity.twist << std::endl;
 
         velocity_pub.publish(velocity.twist);
