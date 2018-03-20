@@ -50,8 +50,8 @@ bool target_subscribed = false;
 bool move_allowed = true;
 
 void evaluate(geometry_msgs::Twist&);
-float calcurate_heading(float, float, geometry_msgs::Point);
-float calcurate_distance(float, float);
+float calcurate_heading(float, float, geometry_msgs::Pose&);
+float calcurate_distance(float, float, geometry_msgs::Pose&);
 float calcurate_velocity(float);
 void calcurate_dynamic_window(void);
 
@@ -158,21 +158,23 @@ int main(int argc, char** argv)
         float distance_to_goal = sqrt(pow(goal.pose.position.x - current_odometry.pose.pose.position.x, 2) + pow(goal.pose.position.y-current_odometry.pose.pose.position.y, 2));
         std::cout << distance_to_goal << "[m]" << std::endl;
         if(distance_to_goal < V_THRESHOLD){
-          velocity.twist.linear.x *= 2*distance_to_goal;
+          //velocity.twist.linear.x *= 2*distance_to_goal;
         }
         if(distance_to_goal < OMEGA_THRESHOLD){
-          velocity.twist.angular.z *= 2*distance_to_goal;
+          //velocity.twist.angular.z *= 2*distance_to_goal;
         }
-        //velocity.twist.linear.x *= RATIO;
-        //velocity.twist.angular.z *= (1-RATIO);
+        velocity.twist.linear.x *= RATIO;
+        velocity.twist.angular.z *= (1-RATIO);
 
         //stopの時
         if(!move_allowed){
-          velocity.twist.linear.x = 0;
+          //velocity.twist.linear.x = 0;
         }
 
-        std::cout << RATIO << std::endl;
+        std::cout << "order" << std::endl;
         std::cout << velocity.twist << std::endl;
+        //std::cout << "measurement" << std::endl;
+        //std::cout << velocity_odometry << std::endl;
 
         velocity_pub.publish(velocity.twist);
         std::cout << "goal:" <<  goal.pose.position.x <<" "<< goal.pose.position.y << std::endl;
@@ -200,7 +202,17 @@ void evaluate(geometry_msgs::Twist& velocity)
     for(float o = 0;o < elements_o;o++){
       float _velocity = window_down + v * VELOCITY_RESOLUTION;
       float _omega = window_left + o * ANGULAR_VELOCITY_RESOLUTION; 
-      e[v][o] = ALPHA * calcurate_heading(_omega, get_yaw(current_odometry.pose.pose.orientation), current_odometry.pose.pose.position) + BETA * calcurate_distance(_velocity, _omega) + GAMMA * calcurate_velocity(_velocity);
+      geometry_msgs::Pose pose;
+      float dt = 0.01;
+      float theta = 0;
+      for(float t=0;t<SIMULATE_TIME;t+=dt){
+        pose.position.x += _velocity * cos(_omega * t) * dt;
+        pose.position.y += _velocity * sin(_omega * t) * dt;
+        theta += _omega;
+      }
+      pose.orientation = tf::createQuaternionMsgFromYaw(theta);
+      
+      e[v][o] = ALPHA * calcurate_heading(_velocity, _omega, pose) + BETA * calcurate_distance(_velocity, _omega, pose) + GAMMA * calcurate_velocity(_velocity);
       //std::cout << e[v][o] << " ";
     }
     //std::cout << std::endl;
@@ -230,36 +242,36 @@ void evaluate(geometry_msgs::Twist& velocity)
   std::cout << std::endl;
 }
 
-float calcurate_heading(float omega, float angle, geometry_msgs::Point point)
+float calcurate_heading(float v, float omega, geometry_msgs::Pose& pose)
 {
-  float goal_angle = (atan2((goal.pose.position.y-point.y), (goal.pose.position.x-point.x)) - (angle + omega * INTERVAL));// / M_PI * 180;
-  //std::cout << atan2(sin(goal_angle), cos(goal_angle)) / M_PI * 180<< "[deg]" << std::endl;
-  float val = 180 - fabs(atan2(sin(goal_angle), cos(goal_angle))) / M_PI * 180;
-  //std::cout << val << " ";
-  return val;
+  float _x = pose.position.x;
+  float _y = pose.position.y;
+  float _theta = get_yaw(pose.orientation);
+  float current_theta = get_yaw(current_odometry.pose.pose.orientation);
+  float __x = _x * cos(current_theta) - _y * sin(current_theta) + current_odometry.pose.pose.position.x;
+  float __y = _y * sin(current_theta) + _y * cos(current_theta) + current_odometry.pose.pose.position.y;
+  _theta += current_theta;
+  float distance = sqrt(pow(__x - goal.pose.position.x, 2) + pow(__y - goal.pose.position.y, 2));
+  float dtheta = fabs(get_yaw(goal.pose.orientation) - _theta);
+  float val2 = exp(-dtheta);
+  float val = exp(-distance);
+  //std::cout << distance << " "; 
+  return val;// + val2;
 }
 
-float calcurate_distance(float v, float omega)
+float calcurate_distance(float v, float omega, geometry_msgs::Pose& pose)
 {
-  geometry_msgs::Pose2D position;
   /*
-  if(omega != 0.0){
-    position.x = v / omega * sin(omega * SIMULATE_TIME);
-    position.y = v / omega * cos(omega * SIMULATE_TIME);
-  }else{
-    position.x = v * SIMULATE_TIME;
-    position.y = 0;
-  }
-  */
+  geometry_msgs::Pose pose;
   float dt = 0.01;
+  float theta = get_yaw(current_odometry.pose.pose.orientation);
   for(float t=0;t<SIMULATE_TIME;t+=dt){
-    position.x += v * cos(omega * t) * dt;
-    position.y += v * sin(omega * t) * dt;
+    pose.position.x += v * cos(omega * t) * dt;
+    pose.position.y += v * sin(omega * t) * dt;
+    theta += _omega;
   }
-
-  //std::cout << std::setprecision(2) << "(" << v << ", " << omega << ")";
-  //std::cout << std::setprecision(2) << "(" << position.x << ", " << position.y << ")";
-
+  pose.orientation = tf::createQuaternionMsgFromYaw(theta);
+  */
   geometry_msgs::Pose2D object;
 
   int index = 0;
@@ -269,20 +281,7 @@ float calcurate_distance(float v, float omega)
     if(_laser_data.ranges[i] < LIMIT_DISTANCE){
       object.x = _laser_data.ranges[i] * sin(LASER_RESOLUTION * i);
       object.y = _laser_data.ranges[i] * cos(LASER_RESOLUTION * i) * -1.0;
-      /*
-      if((object.y < position.y) && (omega > 0) && (object.y > 0)){
-        //std::cout << "b";
-        return 0;
-      }else if((object.y > position.y) && (omega < 0) && (object.y < 0)){
-        //std::cout << "c";
-        return 0;
-      }else if(object.x < position.x){
-        //std::cout << "a";
-        return 0;
-      }
-      */
-      //std::cout << object << " ";
-      float _distance = sqrt(pow((object.x - position.x), 2) + pow((object.y - position.y), 2)); 
+      float _distance = sqrt(pow((object.x - pose.position.x), 2) + pow((object.y - pose.position.y), 2)); 
       if(_distance < distance){
         //std::cout << "obj" << object << "pos" << position << std::endl;
         index = i;
