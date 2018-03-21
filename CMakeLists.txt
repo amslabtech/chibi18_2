@@ -186,6 +186,8 @@ target_link_libraries(localizer
   ${catkin_LIBRARIES}
 )
 target_link_libraries(globalpath_O
+  ${catkin_LIBRARIES}
+)
 target_link_libraries(amcl_to_chibi
   ${catkin_LIBRARIES}
 )
