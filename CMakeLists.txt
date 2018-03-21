@@ -149,7 +149,9 @@ add_executable(local_path_planner src/local_path_planner.cpp)
 add_executable(laser_link src/laser_link.cpp)
 add_executable(global_path_planner src/global_path_planner.cpp)
 add_executable(localizer src/localizer.cpp)
+add_executable(globalpath_O src/globalpath_O.cpp)
 add_executable(amcl_to_chibi src/amcl_to_chibi.cpp)
+
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -183,6 +185,7 @@ target_link_libraries(global_path_planner
 target_link_libraries(localizer
   ${catkin_LIBRARIES}
 )
+target_link_libraries(globalpath_O
 target_link_libraries(amcl_to_chibi
   ${catkin_LIBRARIES}
 )
