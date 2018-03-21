@@ -48,6 +48,13 @@ float range_max;
 int matching_step;
 float update_distance;
 float update_angle;
+float laser_z_hit;
+float laser_z_short;
+float laser_z_max;
+float laser_z_rand;
+float laser_sigma_hit;
+float laser_lambda_short;
+float laser_likelihood_max_dist;
 nav_msgs::OccupancyGrid map;
 bool map_subscribed = false;
 std::vector<Particle>  particles;
@@ -126,6 +133,13 @@ int main(int argc, char** argv)
     local_nh.getParam("MATCHING_STEP", matching_step);
     local_nh.getParam("UPDATE_DISTANCE", update_distance);
     local_nh.getParam("UPDATE_ANGLE", update_angle);
+    local_nh.getParam("LASER_Z_HIT", laser_z_hit);
+    local_nh.getParam("LASER_Z_SHORT", laser_z_short);
+    local_nh.getParam("LASER_Z_MAX", laser_z_max);
+    local_nh.getParam("LASER_Z_RAND", laser_z_rand);
+    local_nh.getParam("LASER_SIGAM_HIT", laser_sigma_hit);
+    local_nh.getParam("LASER_LAMBDA_SHORT", laser_lambda_short);
+    local_nh.getParam("LASER_Z_LIKELIHOOD_MAX_DIST", laser_likelihood_max_dist);
 
     std::srand(time(NULL));
 
@@ -194,10 +208,26 @@ int main(int argc, char** argv)
           laser_data_from_map.header.frame_id = "map";
           for(int i=0;i<N;i++){
             float p_yaw = get_yaw(particles[i].pose.pose.orientation);
+            float p = 1.0;
             for(int angle=0;angle<720;angle+=matching_step){
+              float pz = 0;
               laser_data_from_map.ranges[angle] = get_range_from_map(angle, particles[i].pose.pose.position.x, particles[i].pose.pose.position.y, p_yaw);
+              float z = laser_data_from_scan.ranges[angle] - laser_data_from_map.ranges[angle];
+              pz += laser_z_hit * exp(-get_square(z)) / (2 * get_square(laser_sigma_hit));
+              if(z < 0){
+                pz += laser_z_short * laser_lambda_short * exp(-laser_lambda_short * laser_data_from_map.ranges[angle]);
+              }
+              if(laser_data_from_scan.ranges[angle] == range_max){
+                pz += laser_z_max * 1.0;
+              }
+              if(laser_data_from_scan.ranges[angle] < range_max){
+                pz += laser_z_rand * 1.0 / range_max;
+              }
+              p += pz * pz * pz;
             }
+            particles[i].likelihood *= p;
             //laser_pub.publish(laser_data_from_map);
+            /*
             float rss = 0;//残差平方和
             for(int angle=0;angle<720;angle+=matching_step){
               rss += get_square(laser_data_from_map.ranges[angle] - laser_data_from_scan.ranges[angle]); 
@@ -207,6 +237,7 @@ int main(int argc, char** argv)
               //particles[i].likelihood = 0;
             }
             //std::cout << rss << ", " << particles[i].likelihood << std::endl;
+            */
           }
           float sum = 0;
           for(int i=0;i<N;i++){
@@ -267,11 +298,11 @@ int main(int argc, char** argv)
           _transform.stamp_ = ros::Time::now();
           _transform.setOrigin(tf::Vector3(estimated_pose.pose.position.x, estimated_pose.pose.position.y, 0.0));
           _transform.setRotation(tf::createQuaternionFromYaw(get_yaw(estimated_pose.pose.orientation)));
-          tf::Stamped<tf::Pose> tf_stamped(_transform.inverse(), laser_data_from_scan.header.stamp, "base_link");
+          tf::Stamped<tf::Pose> tf_stamped(_transform.inverse(), ros::Time(0), "base_link");
           tf::Stamped<tf::Pose> odom_to_map; 
           listener.transformPose("odom", tf_stamped, odom_to_map);
           tf::Transform latest_tf = tf::Transform(tf::Quaternion(odom_to_map.getRotation()), tf::Point(odom_to_map.getOrigin()));
-          tf::StampedTransform temp_tf_stamped(latest_tf.inverse(), laser_data_from_scan.header.stamp, "map", "odom");
+          tf::StampedTransform temp_tf_stamped(latest_tf.inverse(), ros::Time(0), "map", "odom");
           map_broadcaster.sendTransform(temp_tf_stamped);
         }catch(tf::TransformException ex){
           std::cout << "braodcast error!" << std::endl;

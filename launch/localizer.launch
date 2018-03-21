@@ -16,6 +16,13 @@
   <arg name="MATCHING_STEP" default="1"/>
   <arg name="UPDATE_DISTANCE" default="0.2"/>
   <arg name="UPDATE_ANGLE" default="0.1"/>
+  <arg name="LASER_Z_HIT" default="0.95"/>
+  <arg name="LASER_Z_SHORT" default="0.1"/>
+  <arg name="LASER_Z_MAX" default="0.05"/>
+  <arg name="LASER_Z_RAND" default="0.05"/>
+  <arg name="LASER_SIGMA_HIT" default="0.2"/>
+  <arg name="LASER_LAMBDA_SHORT" default="0.1"/>
+  <arg name="LASER_LIKELIHOOD_MAX_DIST" default="2.0"/>
 
   <node pkg="chibi18_control" name="localizer" type="localizer">
     <param name="N" value="$(arg PARTICLE_N)"/>
@@ -34,6 +41,13 @@
     <param name="MATCHING_STEP" value="$(arg MATCHING_STEP)"/>
     <param name="UPDATE_DISTANCE" value="$(arg UPDATE_DISTANCE)"/>
     <param name="UPDATE_ANGLE" value="$(arg UPDATE_ANGLE)"/>
+    <param name="LASER_Z_HIT" value="$(arg LASER_Z_HIT)"/>
+    <param name="LASER_Z_SHORT" value="$(arg LASER_Z_SHORT)"/>
+    <param name="LASER_Z_MAX" value="$(arg LASER_Z_MAX)"/>
+    <param name="LASER_Z_RAND" value="$(arg LASER_Z_RAND)"/>
+    <param name="LASER_SIGMA_HIT" value="$(arg LASER_SIGMA_HIT)"/>
+    <param name="LASER_LAMBDA_SHORT" value="$(arg LASER_LAMBDA_SHORT)"/>
+    <param name="LASER_LIKELIHOOD_MAX_DIST" value="$(arg LASER_LIKELIHOOD_MAX_DIST)"/>
   </node>
 
 </launch>
