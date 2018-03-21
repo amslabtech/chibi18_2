@@ -26,6 +26,8 @@ float V_THRESHOLD;
 float OMEGA_THRESHOLD;
 float LIMIT_DISTANCE;
 float ROBOT_RADIUS;
+float GOAL_XY_TOLERANCE;
+float GOAL_YAW_TOLERANCE;
 
 //評価関数の係数
 float ALPHA = 0;//heading
@@ -108,6 +110,8 @@ int main(int argc, char** argv)
     local_nh.getParam("OMEGA_THRESHOLD", OMEGA_THRESHOLD);
     local_nh.getParam("LIMIT_DISTANCE", LIMIT_DISTANCE);
     local_nh.getParam("ROBOT_RADIUS", ROBOT_RADIUS);
+    local_nh.getParam("GOAL_YAW_TOLERANCE", GOAL_YAW_TOLERANCE);
+    local_nh.getParam("GOAL_XY_TOLERANCE", GOAL_XY_TOLERANCE);
 
     ros::Subscriber odometry_sub = nh.subscribe("/roomba/odometry", 100, odometry_callback);
 
@@ -159,18 +163,17 @@ int main(int argc, char** argv)
 
         float distance_to_goal = sqrt(pow(goal.pose.position.x - current_odometry.pose.pose.position.x, 2) + pow(goal.pose.position.y-current_odometry.pose.pose.position.y, 2));
         std::cout << distance_to_goal << "[m]" << std::endl;
-        if(distance_to_goal < V_THRESHOLD){
-          //velocity.twist.linear.x *= 2*distance_to_goal;
-        }
-        if(distance_to_goal < OMEGA_THRESHOLD){
-          //velocity.twist.angular.z *= 2*distance_to_goal;
-        }
         velocity.twist.linear.x *= RATIO;
         velocity.twist.angular.z *= (1-RATIO);
 
-        //stopの時
-        if(!move_allowed){
-          //velocity.twist.linear.x = 0;
+        if(distance_to_goal < GOAL_XY_TOLERANCE){
+          velocity.twist.linear.x = 0;
+          float goal_diff = get_yaw(goal.pose.orientation) - get_yaw(current_odometry.pose.pose.orientation);
+          if(fabs(goal_diff) < GOAL_YAW_TOLERANCE){
+            velocity.twist.angular.z = 0;
+          }else{
+            velocity.twist.angular.z = goal_diff;
+          }
         }
 
         std::cout << "order" << std::endl;
@@ -214,9 +217,9 @@ void evaluate(geometry_msgs::Twist& velocity)
       pose.orientation = tf::createQuaternionMsgFromYaw(theta);
       
       e[v][o] = ALPHA * calcurate_heading(_velocity, _omega, pose) + BETA * calcurate_distance(_velocity, _omega, pose) + GAMMA * calcurate_velocity(_velocity);
-      //std::cout << e[v][o] << " ";
+      std::cout << e[v][o] << " ";
     }
-    //std::cout << std::endl;
+    std::cout << std::endl;
   }
   int j = 0;
   int k = 0;

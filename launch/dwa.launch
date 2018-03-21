@@ -1,9 +1,11 @@
 <launch>
-  <arg name="x" default="0.3"/>
+  <arg name="x" default="3.0"/>
   <arg name="y" default="0.0"/>
+  <arg name="yaw" default="1.57"/>
   <node pkg="chibi18_control" name="set_target" type="set_target">
-    <param name="X" value="3.0"/>
-    <param name="Y" value="0.0"/>
+    <param name="X" value="$(arg x)"/>
+    <param name="Y" value="$(arg y)"/>
+    <param name="YAW" value="$(arg yaw)"/>
   </node>
 
   <include file="$(find chibi18_control)/launch/local_planner.launch"/>
