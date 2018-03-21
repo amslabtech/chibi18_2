@@ -123,7 +123,6 @@ int main(int argc, char** argv)
 
   global_path.header.frame_id = "map";
 
-  std::vector<geometry_msgs::PoseStamped>::iterator it = global_path.poses.begin();
 
   while(ros::ok()){
     int navigation_index = 0;
@@ -135,20 +134,25 @@ int main(int argc, char** argv)
       
     }
     if(!global_path.poses.empty()){
+      std::vector<geometry_msgs::PoseStamped>::iterator it = global_path.poses.end();
+      --it;
+
       path_pub.publish(global_path);
       //std::cout << get_grid_data(5.05, -1.35) << std::endl;;
       //std::cout << get_index(5.05, -1.35) << std::endl;
       if(pose_subscribed){
         while(it != global_path.poses.end()){
+          std::cout << global_path.poses.size() << std::endl;
           float distance = sqrt(pow(it->pose.position.x - estimated_pose.pose.position.x, 2) + pow(it->pose.position.y - estimated_pose.pose.position.y, 2));
-          if(waypoint_distance < distance){
+          std::cout << "d=" << distance << "[m]" << std::endl;
+          if(waypoint_distance > distance){
             target_pub.publish(*it);
             break;
           }else if(it == global_path.poses.end() -1){
-            target_pub.publish(*it);
-            break;
+            //target_pub.publish(*it);
+            //break;
           }
-          ++it;
+          --it;
         }
       }
     }
@@ -421,7 +425,7 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
   while(1){
     path_pose.pose.position.x = (path_index % map.info.width) * map.info.resolution + map.info.origin.position.x;
     path_pose.pose.position.y = (path_index - (path_index % map.info.width)) / map.info.width * map.info.resolution + map.info.origin.position.y;
-    path_pose.pose.orientation.w = 1;
+    path_pose.pose.orientation = goal.pose.orientation;
     //std::cout << path_pose.pose.position.x << ", " << path_pose.pose.position.y << ", " << path_index << ", " << cells[path_index].cost << ", " << (int)map.data[path_index] << std::endl;
     //std::cout << cells[path_index].cost << std::endl;
     _path.poses.push_back(path_pose);

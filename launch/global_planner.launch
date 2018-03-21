@@ -3,7 +3,7 @@
   <arg name="START_Y" default="0.0"/>
   <arg name="WAYPOINT_DISTANCE" default="3.0"/>
 
-  <node pkg="chibi18_control" name="global_path_planner" type="global_path_planner" output="screen">
+  <node pkg="chibi18_control" name="global_path_planner" type="global_path_planner">
     <param name="START_X" value="$(arg START_X)"/>
     <param name="START_Y" value="$(arg START_Y)"/>
     <param name="WAYPOINT_DISTANCE" value="$(arg WAYPOINT_DISTANCE)"/>
