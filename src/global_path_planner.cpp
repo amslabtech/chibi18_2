@@ -39,6 +39,7 @@ public:
 std::vector<Cell> cells;
 std::vector<int> open_list;
 std::vector<int> close_list;
+std::vector<int> waypoint_list;
 
 
 int get_grid_data(float, float);
@@ -184,13 +185,10 @@ int main(int argc, char** argv)
       cost_pub.publish(_cost_map);
       
     }
-    if(!global_path.poses.empty()){
-      std::vector<geometry_msgs::PoseStamped>::iterator it = global_path.poses.end();
-      --it;
+    if(!global_path.poses.empty() && !waypoint_list.empty()){
+      std::vector<geometry_msgs::PoseStamped>::iterator it = global_path.poses.begin() + waypoint_list[0];
 
       path_pub.publish(global_path);
-      //std::cout << get_grid_data(5.05, -1.35) << std::endl;;
-      //std::cout << get_index(5.05, -1.35) << std::endl;
       if(pose_subscribed){
         while(it != global_path.poses.end()){
           std::cout << global_path.poses.size() << std::endl;
@@ -198,6 +196,9 @@ int main(int argc, char** argv)
           std::cout << "d=" << distance << "[m]" << std::endl;
           if(waypoint_distance > distance){
             target_pub.publish(*it);
+            if(distance < distance / 10.0){
+              waypoint_list.erase(waypoint_list.begin());
+            }
             break;
           }else if(it == global_path.poses.end() -1){
             //target_pub.publish(*it);
@@ -485,6 +486,7 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
     if(path_index < 0){
       std::reverse(_path.poses.begin(), _path.poses.end());
       global_path.poses.insert(global_path.poses.end(), _path.poses.begin(), _path.poses.end());
+      waypoint_list.push_back(global_path.poses.size() -1);
       break;
     }
   }
