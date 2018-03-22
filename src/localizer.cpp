@@ -141,6 +141,7 @@ int main(int argc, char** argv)
 
     tf::TransformBroadcaster map_broadcaster;
     tf::TransformListener listener;
+    tf::StampedTransform temp_tf_stamped;
 
     ros::Rate loop_rate(10);
 
@@ -182,7 +183,7 @@ int main(int argc, char** argv)
           calculate_flag = true;
         }
         if(calculate_flag){
-          calculate_flag = false;
+          //calculate_flag = false;
           for(int i=0;i<particles.size();i++){
             particles[i].move(dx, dy, dtheta);
           }
@@ -260,9 +261,12 @@ int main(int argc, char** argv)
           estimated_pose = particles[max_index].pose;
           pose_pub.publish(estimated_pose);
         }
-        //odomの補正を計算
-        std::cout << "modfy frame odom" << std::endl;
-        try{
+      }
+      //odomの補正を計算
+      std::cout << "modfy frame odom" << std::endl;
+      try{
+        if(calculate_flag){
+          calculate_flag = false;
           tf::StampedTransform _transform;
           _transform.stamp_ = ros::Time::now();
           _transform.setOrigin(tf::Vector3(estimated_pose.pose.position.x, estimated_pose.pose.position.y, 0.0));
@@ -271,14 +275,15 @@ int main(int argc, char** argv)
           tf::Stamped<tf::Pose> odom_to_map; 
           listener.transformPose("odom", tf_stamped, odom_to_map);
           tf::Transform latest_tf = tf::Transform(tf::Quaternion(odom_to_map.getRotation()), tf::Point(odom_to_map.getOrigin()));
-          tf::StampedTransform temp_tf_stamped(latest_tf.inverse(), laser_data_from_scan.header.stamp, "map", "odom");
-          map_broadcaster.sendTransform(temp_tf_stamped);
-        }catch(tf::TransformException ex){
-          std::cout << "braodcast error!" << std::endl;
-          std::cout << ex.what() << std::endl; 
+          temp_tf_stamped = tf::StampedTransform(latest_tf.inverse(), laser_data_from_scan.header.stamp, "map", "odom");
         }
-        std::cout << "from map to odom transform broadcasted" << std::endl;
+        temp_tf_stamped.stamp_ = ros::Time::now();
+        map_broadcaster.sendTransform(temp_tf_stamped);
+      }catch(tf::TransformException ex){
+        std::cout << "braodcast error!" << std::endl;
+        std::cout << ex.what() << std::endl; 
       }
+      std::cout << "from map to odom transform broadcasted" << std::endl;
       
       std::cout << "loop:" << ros::Time::now() - begin << "[s]" << std::endl;
       ros::spinOnce();
