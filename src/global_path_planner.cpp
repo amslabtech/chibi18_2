@@ -15,27 +15,25 @@ geometry_msgs::PoseStamped estimated_pose;
 
 nav_msgs::OccupancyGrid _cost_map;//for debug
 
+float margin_wall;
+
 class Cell 
 {
 public:
   Cell(void)
   {
     is_wall = false;
-    cost = 1;
-    //heuristic = -1;
+    cost = 0;
     step = 0;
     sum = -1;
     parent_index = -1;
-    is_available = -1;
   }
 
   int cost;
   int step;
-  //int heuristic;
   int sum;
   int parent_index;
   bool is_wall;
-  bool is_available;
 };
 
 std::vector<Cell> cells;
@@ -57,18 +55,70 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
   map = *msg;
   std::cout << map.data.size() << std::endl;
 
+  _cost_map.header = map.header;
+  _cost_map.info = map.info;
+  _cost_map.data.resize(map.info.height*map.info.width);
+
+  int margin_wall_step = 127 / (margin_wall / map.info.resolution);
+  std::cout << "margin_wall_step:" << margin_wall_step << std::endl;
+
+  std::vector<int> wall_list;
+
   cells.resize(map.info.height*map.info.width);
   for(int i=0;i<map.info.height*map.info.width;i++){
     cells[i].is_wall = (map.data[i]!=0);
     cells[i].sum = -1;
     cells[i].parent_index = -1;
     if(cells[i].is_wall){
-      cells[i].cost = 100;
+      wall_list.push_back(i);
+      _cost_map.data[i] = 254;
+      cells[i].cost = 254;
     }
   }
-  _cost_map.header = map.header;
-  _cost_map.info = map.info;
-  _cost_map.data.resize(map.info.height*map.info.width);
+  std::cout << "wall:" <<  wall_list.size() << std::endl;
+  int i=0;
+  while(ros::ok()){
+    int cost = cells[wall_list[i]].cost;
+    if(i==wall_list.size()){
+      break;
+    }
+    if(cost < margin_wall_step){
+      std::cout << "end" << cost << std::endl;
+      break;
+    }
+    int _i = wall_list[i] % map.info.width; 
+    int _j = (wall_list[i] - _i) / map.info.height;
+    if(_i-1>0){
+      int index = (_i-1) + (_j) * map.info.width;
+      if(cells[index].cost < cost){
+        cells[index].cost = cost - margin_wall_step;
+        wall_list.push_back(index);
+      }
+    }
+    if(_i+1<map.info.width){
+      int index = (_i+1) + (_j) * map.info.width;
+      if(cells[index].cost < cost){
+        cells[index].cost = cost - margin_wall_step;
+        wall_list.push_back(index);
+      }
+    }
+    if(_j-1>0){
+      int index = (_i) + (_j-1) * map.info.width;
+      if(cells[index].cost < cost){
+        cells[index].cost = cost - margin_wall_step;
+        wall_list.push_back(index);
+      }
+    }
+    if(_j+1<map.info.width){
+      int index = (_i) + (_j+1) * map.info.width;
+      if(cells[index].cost < cost){
+        cells[index].cost = cost - margin_wall_step;
+        wall_list.push_back(index);
+      }
+    }
+    i++;
+  }
+  std::cout << "map callback end" << std::endl;
 }
 
 void goal_callback(const geometry_msgs::PoseStampedConstPtr& msg)
@@ -98,6 +148,7 @@ int main(int argc, char** argv)
   local_nh.getParam("START_X", start.pose.position.x);
   local_nh.getParam("START_Y", start.pose.position.y);
   local_nh.getParam("WAYPOINT_DISTANCE", waypoint_distance);
+  local_nh.getParam("MARGIN_WALL", margin_wall);
   //std::cout << goal.pose.position.x << " " << goal.pose.position.y<<std::endl;
   start.pose.orientation.w = 1;
   goal.pose.orientation.w = 1;
