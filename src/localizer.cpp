@@ -158,11 +158,13 @@ int main(int argc, char** argv)
           listener.lookupTransform("odom", "base_link", ros::Time(0), current_base_link_pose);
           dx = current_base_link_pose.getOrigin().x() - previous_base_link_pose.getOrigin().x();
           dy = current_base_link_pose.getOrigin().y() - previous_base_link_pose.getOrigin().y();
+          /*
           float yaw = getYaw(previous_base_link_pose.getRotation());
           dx = dx * cos(yaw) + dy * sin(yaw);
           dy = dx * -sin(yaw) + dy * cos(yaw);
           dy = 0;//test
           std::cout << dx << ", " << dy << ", " << yaw << std::endl;
+          */
           //std::cout << "calc quat" << std::endl;
           quaternionTFToMsg(current_base_link_pose.getRotation(), qc);
           quaternionTFToMsg(previous_base_link_pose.getRotation(), qp);
@@ -182,11 +184,11 @@ int main(int argc, char** argv)
           angle_sum = 0;
           calculate_flag = true;
         }
+        for(int i=0;i<particles.size();i++){
+          particles[i].move(dx, dy, dtheta);
+        }
         if(calculate_flag){
           //calculate_flag = false;
-          for(int i=0;i<particles.size();i++){
-            particles[i].move(dx, dy, dtheta);
-          }
         
           //measurement & likelihood
           std::cout << "calculate likelihood" << std::endl;
@@ -203,7 +205,7 @@ int main(int argc, char** argv)
             for(int angle=0;angle<720;angle+=matching_step){
               rss += get_square(laser_data_from_map.ranges[angle] - laser_data_from_scan.ranges[angle]); 
             }
-            particles[i].likelihood =  exp(-get_square(rss / POSITION_SIGMA) / 2.0);
+            particles[i].likelihood =  exp(-rss / get_square(POSITION_SIGMA) / 2.0);
             if((int)get_grid_data(particles[i].pose.pose.position.x, particles[i].pose.pose.position.y) != 0){
               //particles[i].likelihood = 0;
             }
@@ -347,15 +349,13 @@ void Particle::initialize(int width, int height, float resolution, geometry_msgs
 
 void Particle::move(float dx, float dy, float dtheta)
 {
-  //引数はbase_linkの正面方向をxとした動き
   float yaw = get_yaw(pose.pose.orientation);
   std::normal_distribution<> rand_x(0, odom_x_noise);
-  dx += rand_x(mt);
   std::normal_distribution<> rand_y(0, odom_y_noise);
-  dy += rand_y(mt);
   std::normal_distribution<> rand_yaw(0, odom_yaw_noise);
-  pose.pose.position.x += dx * cos(yaw) - dy * sin(yaw);
-  pose.pose.position.y += dx * sin(yaw) + dy * cos(yaw);
+  float distance = sqrt(dx * dx + dy * dy);
+  pose.pose.position.x += distance * cos(yaw) + rand_x(mt);
+  pose.pose.position.y += distance * sin(yaw) + rand_y(mt);
   quaternionTFToMsg(tf::createQuaternionFromYaw(yaw + dtheta + rand_yaw(mt)), pose.pose.orientation); 
 }
 
