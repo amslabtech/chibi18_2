@@ -192,14 +192,17 @@ int main(int argc, char** argv)
 void evaluate(geometry_msgs::Twist& velocity)
 {
   std::vector<std::vector<float> > e;
+  std::vector<std::vector<bool> > allowed;
   int elements_v = int((window_up - window_down)/VELOCITY_RESOLUTION);
   int elements_o = int((window_right - window_left)/ANGULAR_VELOCITY_RESOLUTION);
   //std::cout << "left=" << window_left << " right=" << window_right << std::endl;
   //std::cout << "v=" << elements_v << " o=" << elements_o << std::endl;
   //std::cout << velocity_odometry << std::endl;
   e.resize(elements_v);
+  allowed.resize(elements_v);
   for(int i = 0;i<elements_v;i++){
     e[i].resize(elements_o);
+    allowed[i].resize(elements_o);
   }
   _laser_data = laser_data;
   for(float v = 0;v < elements_v;v++){
@@ -216,7 +219,15 @@ void evaluate(geometry_msgs::Twist& velocity)
       }
       pose.orientation = tf::createQuaternionMsgFromYaw(theta);
       
-      e[v][o] = ALPHA * calcurate_heading(_velocity, _omega, pose) + BETA * calcurate_distance(_velocity, _omega, pose) + GAMMA * calcurate_velocity(_velocity);
+      e[v][o] = ALPHA * calcurate_heading(_velocity, _omega, pose);
+      float dist_val = BETA * calcurate_distance(_velocity, _omega, pose);
+      if(dist_val == 0.0){
+        allowed[v][o] = false;
+      }else{
+        allowed[v][o] = true;
+      }
+      e[v][o] += dist_val;
+      e[v][o] += GAMMA * calcurate_velocity(_velocity);
       std::cout << e[v][o] << " ";
     }
     std::cout << std::endl;
@@ -226,7 +237,7 @@ void evaluate(geometry_msgs::Twist& velocity)
   float max = 0;
   for(float v = 0;v < elements_v;v++){
     for(float o = 0;o < elements_o;o++){
-      if(e[v][o] > max){
+      if((e[v][o] > max) && (allowed[v][o])){
         max = e[v][o]; 
 	j=v;
 	k=o;
