@@ -142,6 +142,7 @@ int main(int argc, char** argv)
     tf::TransformBroadcaster map_broadcaster;
     tf::TransformListener listener;
     tf::StampedTransform temp_tf_stamped;
+    temp_tf_stamped = tf::StampedTransform(tf::Transform(tf::createQuaternionFromYaw(init_yaw), tf::Vector3(init_x, init_y, 0)), ros::Time::now(), "map", "odom");
 
     ros::Rate loop_rate(10);
 
@@ -280,6 +281,7 @@ int main(int argc, char** argv)
           temp_tf_stamped = tf::StampedTransform(latest_tf.inverse(), laser_data_from_scan.header.stamp, "map", "odom");
         }
         temp_tf_stamped.stamp_ = ros::Time::now();
+        poses_pub.publish(poses);
         map_broadcaster.sendTransform(temp_tf_stamped);
       }catch(tf::TransformException ex){
         std::cout << "braodcast error!" << std::endl;
