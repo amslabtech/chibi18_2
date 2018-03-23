@@ -244,52 +244,49 @@ int main(int argc, char** argv)
           for(int i=0;i<N;i++){
             poses.poses[i] = particles[i].pose.pose;
           }
+        }
+        //if(map_subscribed){
+        //odomの補正を計算
+        std::cout << "modfy frame odom" << std::endl;
+        try{
+          if(calculate_flag){
+            calculate_flag = false;
+            //推定値の算出
+            std::cout << "calculate estimated_pose" << std::endl;
+            int max_index = 0;
+            for(int i=0;i<N;i++){
+              if(particles[i].likelihood > particles[max_index].likelihood){
+                max_index = i;
+              }
+            }
+            estimated_pose.header.frame_id = "map";
+            estimated_pose = particles[max_index].pose;
+            pose_pub.publish(estimated_pose);
+
+            tf::StampedTransform _transform;
+            _transform.stamp_ = ros::Time::now();
+            _transform.setOrigin(tf::Vector3(estimated_pose.pose.position.x, estimated_pose.pose.position.y, 0.0));
+            _transform.setRotation(tf::createQuaternionFromYaw(get_yaw(estimated_pose.pose.orientation)));
+            tf::Stamped<tf::Pose> tf_stamped(_transform.inverse(), laser_data_from_scan.header.stamp, "base_link");
+            tf::Stamped<tf::Pose> odom_to_map; 
+            listener.transformPose("odom", tf_stamped, odom_to_map);
+            tf::Transform latest_tf = tf::Transform(tf::Quaternion(odom_to_map.getRotation()), tf::Point(odom_to_map.getOrigin()));
+            temp_tf_stamped = tf::StampedTransform(latest_tf.inverse(), laser_data_from_scan.header.stamp, "map", "odom");
+          
+          }
+          temp_tf_stamped.stamp_ = ros::Time::now();
+          //パーティクルをpublish
           poses_pub.publish(poses);
-        
-          //推定値の算出
-          std::cout << "calculate estimated_pose" << std::endl;
-          estimated_pose.header.frame_id = "map";
-          /*
-          float sum_angle = 0;
-          for(int i=0;i<N;i++){
-            estimated_pose.pose.position.x += particles[i].likelihood * particles[i].pose.pose.position.x; 
-            estimated_pose.pose.position.y += particles[i].likelihood * particles[i].pose.pose.position.y; 
-            sum_angle += particles[i].likelihood * get_yaw(particles[i].pose.pose.orientation);
-          } 
-          tf::Quaternion temp_tf_q = tf::createQuaternionFromYaw(sum_angle);
-          geometry_msgs::Quaternion temp_g_q;
-          quaternionTFToMsg(temp_tf_q, temp_g_q);
-          estimated_pose.pose.orientation = temp_g_q;
-          */
-          estimated_pose = particles[max_index].pose;
-          pose_pub.publish(estimated_pose);
+          //tf
+          map_broadcaster.sendTransform(temp_tf_stamped);
+        }catch(tf::TransformException ex){
+          std::cout << "braodcast error!" << std::endl;
+          std::cout << ex.what() << std::endl; 
         }
-      }
-      //odomの補正を計算
-      std::cout << "modfy frame odom" << std::endl;
-      try{
-        if(calculate_flag){
-          calculate_flag = false;
-          tf::StampedTransform _transform;
-          _transform.stamp_ = ros::Time::now();
-          _transform.setOrigin(tf::Vector3(estimated_pose.pose.position.x, estimated_pose.pose.position.y, 0.0));
-          _transform.setRotation(tf::createQuaternionFromYaw(get_yaw(estimated_pose.pose.orientation)));
-          tf::Stamped<tf::Pose> tf_stamped(_transform.inverse(), laser_data_from_scan.header.stamp, "base_link");
-          tf::Stamped<tf::Pose> odom_to_map; 
-          listener.transformPose("odom", tf_stamped, odom_to_map);
-          tf::Transform latest_tf = tf::Transform(tf::Quaternion(odom_to_map.getRotation()), tf::Point(odom_to_map.getOrigin()));
-          temp_tf_stamped = tf::StampedTransform(latest_tf.inverse(), laser_data_from_scan.header.stamp, "map", "odom");
-        }
-        temp_tf_stamped.stamp_ = ros::Time::now();
-        poses_pub.publish(poses);
-        map_broadcaster.sendTransform(temp_tf_stamped);
-      }catch(tf::TransformException ex){
-        std::cout << "braodcast error!" << std::endl;
-        std::cout << ex.what() << std::endl; 
-      }
-      std::cout << "from map to odom transform broadcasted" << std::endl;
+        std::cout << "from map to odom transform broadcasted" << std::endl;
       
-      std::cout << "loop:" << ros::Time::now() - begin << "[s]" << std::endl;
+        std::cout << "loop:" << ros::Time::now() - begin << "[s]" << std::endl;
+      }
       ros::spinOnce();
       loop_rate.sleep();
     }

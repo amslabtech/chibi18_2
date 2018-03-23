@@ -1,7 +1,7 @@
 <launch>
    
   <arg name="PARTICLE_N" default="1000"/>
-  <arg name="POSITION_SIGMA" default="7.5"/>
+  <arg name="POSITION_SIGMA" default="3.0"/>
   <arg name="ORIENTATION_SIGMA" default="0.3"/>
   <arg name="_INIT_X_COVARIANCE" default="0.3"/>
   <arg name="_INIT_Y_COVARIANCE" default="0.3"/>
