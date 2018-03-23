@@ -4,6 +4,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 geometry_msgs::PoseStamped start;
 geometry_msgs::PoseStamped goal;
@@ -11,7 +12,7 @@ geometry_msgs::PoseStamped goal;
 nav_msgs::OccupancyGrid map;
 nav_msgs::Path global_path;
 
-geometry_msgs::PoseStamped estimated_pose;
+geometry_msgs::PoseWithCovarianceStamped estimated_pose;
 
 nav_msgs::OccupancyGrid _cost_map;//for debug
 
@@ -134,7 +135,7 @@ void goal_callback(const geometry_msgs::PoseStampedConstPtr& msg)
   calculate_aster(start, goal);
 }
 
-void pose_callback(const geometry_msgs::PoseStampedConstPtr& msg)
+void pose_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
 {
   estimated_pose = *msg;
   pose_subscribed = true;
@@ -192,7 +193,7 @@ int main(int argc, char** argv)
       if(pose_subscribed){
         while(it != global_path.poses.end()){
           std::cout << global_path.poses.size() << std::endl;
-          float distance = sqrt(pow(it->pose.position.x - estimated_pose.pose.position.x, 2) + pow(it->pose.position.y - estimated_pose.pose.position.y, 2));
+          float distance = sqrt(pow(it->pose.position.x - estimated_pose.pose.pose.position.x, 2) + pow(it->pose.position.y - estimated_pose.pose.pose.position.y, 2));
           std::cout << "d=" << distance << "[m]" << std::endl;
           if(waypoint_distance > distance){
             target_pub.publish(*it);

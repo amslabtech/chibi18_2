@@ -14,6 +14,7 @@
 #include <pcl/point_types.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <Eigen/Dense>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 #include <random>
 
@@ -57,7 +58,7 @@ tf::StampedTransform previous_base_link_pose;
 sensor_msgs::LaserScan laser_data_from_scan;
 sensor_msgs::PointCloud2 data_from_scan;
 laser_geometry::LaserProjection projector;
-geometry_msgs::PoseStamped estimated_pose;
+geometry_msgs::PoseWithCovarianceStamped estimated_pose;
 bool calculate_flag = true;
 float distance_sum = 0;
 float angle_sum = 0;
@@ -73,6 +74,7 @@ float get_square(float);
 bool map_valid(int, int);
 float get_range_from_map(int, float, float, float);
 void initialize_particles(float, float, float);
+void calculate_covariance(void);
 
 void laser_callback(const sensor_msgs::LaserScanConstPtr& msg)
 {
@@ -128,7 +130,7 @@ int main(int argc, char** argv)
 
     ros::Subscriber laser_sub = nh.subscribe("/scan", 100, laser_callback);
 
-    ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/chibi18/estimated_pose", 100);
+    ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("/chibi18/estimated_pose", 100);
 
     ros::Publisher laser_pub = nh.advertise<sensor_msgs::LaserScan>("/chibi18/debug/scan", 100);
 
@@ -253,13 +255,14 @@ int main(int argc, char** argv)
               }
             }
             estimated_pose.header.frame_id = "map";
-            estimated_pose = particles[max_index].pose;
+            estimated_pose.pose.pose = particles[max_index].pose.pose;
+            calculate_covariance();
             pose_pub.publish(estimated_pose);
 
             tf::StampedTransform _transform;
             _transform.stamp_ = ros::Time::now();
-            _transform.setOrigin(tf::Vector3(estimated_pose.pose.position.x, estimated_pose.pose.position.y, 0.0));
-            _transform.setRotation(tf::createQuaternionFromYaw(get_yaw(estimated_pose.pose.orientation)));
+            _transform.setOrigin(tf::Vector3(estimated_pose.pose.pose.position.x, estimated_pose.pose.pose.position.y, 0.0));
+            _transform.setRotation(tf::createQuaternionFromYaw(get_yaw(estimated_pose.pose.pose.orientation)));
             tf::Stamped<tf::Pose> tf_stamped(_transform.inverse(), laser_data_from_scan.header.stamp, "base_link");
             tf::Stamped<tf::Pose> odom_to_map; 
             listener.transformPose("odom", tf_stamped, odom_to_map);
@@ -447,4 +450,42 @@ void initialize_particles(float x, float y, float yaw)
   poses.header.frame_id = "map";
 
 
+}
+
+void calculate_covariance(void)
+{
+  float mean_x = 0;
+  float mean_y = 0;
+  float mean_yaw = 0;
+  for(int i=0;i<estimated_pose.pose.covariance.size();i++){
+    estimated_pose.pose.covariance[i] = 0;
+  }
+  for(int i=0;i<N;i++){
+    mean_x = particles[i].pose.pose.position.x;
+    mean_y = particles[i].pose.pose.position.y;
+    mean_yaw = get_yaw(particles[i].pose.pose.orientation);
+  }
+  mean_x /= (float)N;
+  mean_y /= (float)N;
+  mean_yaw /= (float)N;
+  for(int i=0;i<N;i++){
+    float _x = particles[i].pose.pose.position.x - mean_x;
+    float _y = particles[i].pose.pose.position.y - mean_y;
+    float _yaw = get_yaw(particles[i].pose.pose.orientation) - mean_yaw;
+    estimated_pose.pose.covariance[0] += _x * _x;
+    estimated_pose.pose.covariance[1] += _x * _y;
+    estimated_pose.pose.covariance[5] += _x * _yaw;
+    estimated_pose.pose.covariance[7] += _y * _y;
+    estimated_pose.pose.covariance[11] += _y * _yaw;
+    estimated_pose.pose.covariance[35] += _yaw * _yaw;
+  }
+  estimated_pose.pose.covariance[0] /= (float)N;
+  estimated_pose.pose.covariance[1] /= (float)N;
+  estimated_pose.pose.covariance[5] /= (float)N;
+  estimated_pose.pose.covariance[7] /= (float)N;
+  estimated_pose.pose.covariance[11] /= (float)N;
+  estimated_pose.pose.covariance[35] /= (float)N;
+  estimated_pose.pose.covariance[6] = estimated_pose.pose.covariance[1];
+  estimated_pose.pose.covariance[30] = estimated_pose.pose.covariance[5];
+  estimated_pose.pose.covariance[31] = estimated_pose.pose.covariance[11];
 }
