@@ -22,7 +22,7 @@ class Particle
 public:
   Particle(void);
 
-  void initialize(int, int, float, geometry_msgs::Pose, int);
+  void initialize(int, int, float, geometry_msgs::Pose, int, float, float, float);
   void move(float, float, float);//"odom"から見た"base_link"の動き
 
   geometry_msgs::PoseStamped pose;
@@ -72,6 +72,7 @@ int get_index(float, float);
 float get_square(float);
 bool map_valid(int, int);
 float get_range_from_map(int, float, float, float);
+void initialize_particles(float, float, float);
 
 void laser_callback(const sensor_msgs::LaserScanConstPtr& msg)
 {
@@ -89,17 +90,9 @@ void laser_callback(const sensor_msgs::LaserScanConstPtr& msg)
 void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   map = *msg;
-  for(int i=0;i<N;i++){
-    Particle p;
-    do{
-      p.initialize(map.info.width, map.info.height, map.info.resolution, map.info.origin, N);
-    }while(get_grid_data(p.pose.pose.position.x, p.pose.pose.position.y) != 0);
-    particles.push_back(p);
-    poses.poses.push_back(p.pose.pose); 
-  } 
-  poses.header.frame_id = "map";
   
-  
+  initialize_particles(init_x, init_y, init_yaw);
+
   map_subscribed = true;
 }
 
@@ -335,13 +328,13 @@ Particle::Particle(void)
   quaternionTFToMsg(tf::createQuaternionFromYaw(0), pose.pose.orientation);
 }
 
-void Particle::initialize(int width, int height, float resolution, geometry_msgs::Pose origin, int N)
+void Particle::initialize(int width, int height, float resolution, geometry_msgs::Pose origin, int N, float x, float y, float yaw)
 {
-  std::normal_distribution<> rand_x(init_x, init_x_cov);
+  std::normal_distribution<> rand_x(x, init_x_cov);
   pose.pose.position.x = rand_x(mt);
-  std::normal_distribution<> rand_y(init_y, init_y_cov);
+  std::normal_distribution<> rand_y(y, init_y_cov);
   pose.pose.position.y = rand_y(mt);
-  std::normal_distribution<> rand_yaw(init_yaw, init_yaw_cov);
+  std::normal_distribution<> rand_yaw(yaw, init_yaw_cov);
   quaternionTFToMsg(tf::createQuaternionFromYaw(rand_yaw(mt)), pose.pose.orientation);
   likelihood = 1.0 / (float)N;
 }
@@ -439,4 +432,19 @@ float get_range_from_map(int angle, float ox, float oy, float yaw)
     }
   } 
   return range_max;
+}
+
+void initialize_particles(float x, float y, float yaw)
+{
+  for(int i=0;i<N;i++){
+    Particle p;
+    do{
+      p.initialize(map.info.width, map.info.height, map.info.resolution, map.info.origin, N, x, y, yaw);
+    }while(get_grid_data(p.pose.pose.position.x, p.pose.pose.position.y) != 0);
+    particles.push_back(p);
+    poses.poses.push_back(p.pose.pose); 
+  } 
+  poses.header.frame_id = "map";
+
+
 }
