@@ -151,6 +151,7 @@ add_executable(global_path_planner src/global_path_planner.cpp)
 add_executable(localizer src/localizer.cpp)
 add_executable(globalpath_O src/globalpath_O.cpp)
 add_executable(amcl_to_chibi src/amcl_to_chibi.cpp)
+add_executable(waypoint_publisher src/waypoint_publisher.cpp)
 
 
 ## Rename C++ executable without prefix
@@ -189,6 +190,9 @@ target_link_libraries(globalpath_O
   ${catkin_LIBRARIES}
 )
 target_link_libraries(amcl_to_chibi
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(waypoint_publisher
   ${catkin_LIBRARIES}
 )
 

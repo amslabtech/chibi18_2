@@ -1,0 +1,7 @@
+<launch>
+
+  <include file="$(find chibi18_control)/launch/navigation.launch"/>
+
+  <node pkg="chibi18_control" type="waypoint_publisher" name="waypoint_publisher"/>
+
+</launch>
