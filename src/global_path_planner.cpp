@@ -196,7 +196,7 @@ int main(int argc, char** argv)
           std::cout << "d=" << distance << "[m]" << std::endl;
           if(waypoint_distance > distance){
             target_pub.publish(*it);
-            if(distance < distance / 10.0){
+            if(distance < waypoint_distance / 10.0){
               waypoint_list.erase(waypoint_list.begin());
             }
             break;
