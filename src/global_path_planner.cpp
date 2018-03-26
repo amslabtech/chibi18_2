@@ -193,7 +193,12 @@ int main(int argc, char** argv)
       if(pose_subscribed){
         while(it != global_path.poses.end()){
           std::cout << global_path.poses.size() << std::endl;
-          float distance = sqrt(pow(it->pose.position.x - estimated_pose.pose.pose.position.x, 2) + pow(it->pose.position.y - estimated_pose.pose.pose.position.y, 2));
+          float error = pow(it->pose.position.x - estimated_pose.pose.pose.position.x, 2) + pow(it->pose.position.y - estimated_pose.pose.pose.position.y, 2); 
+          if(error < 0){
+            std::cout << "pow error" << std::endl;
+            break;
+          }
+          float distance = sqrt(error);
           std::cout << "d=" << distance << "[m]" << std::endl;
           if(waypoint_distance > distance){
             target_pub.publish(*it);
