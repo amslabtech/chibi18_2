@@ -191,7 +191,7 @@ int main(int argc, char** argv)
 
       path_pub.publish(global_path);
       if(pose_subscribed){
-        while(it != global_path.poses.end()){
+        while((it != global_path.poses.begin()) && (it != global_path.poses.end())){
           std::cout << global_path.poses.size() << std::endl;
           float error = pow(it->pose.position.x - estimated_pose.pose.pose.position.x, 2) + pow(it->pose.position.y - estimated_pose.pose.pose.position.y, 2); 
           if(error < 0){

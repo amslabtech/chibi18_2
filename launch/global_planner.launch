@@ -1,7 +1,7 @@
 <launch>
   <arg name="START_X" default="0.0"/>
   <arg name="START_Y" default="0.0"/>
-  <arg name="WAYPOINT_DISTANCE" default="2.0"/>
+  <arg name="WAYPOINT_DISTANCE" default="1.5"/>
   <arg name="MARGIN_WALL" default="0.3"/>
 
   <node pkg="chibi18_control" name="global_path_planner" type="global_path_planner">
