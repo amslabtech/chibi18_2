@@ -5,15 +5,6 @@
 #include <tf/transform_listener.h>
 #include <geometry_msgs/PoseArray.h>
 #include <sensor_msgs/LaserScan.h>
-#include <laser_geometry/laser_geometry.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl/point_types.h>
-#include <pcl/registration/icp.h>
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl_ros/point_cloud.h>
-#include <pcl/point_types.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <Eigen/Dense>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 #include <random>
@@ -57,8 +48,6 @@ geometry_msgs::PoseArray poses;
 tf::StampedTransform current_base_link_pose;
 tf::StampedTransform previous_base_link_pose;
 sensor_msgs::LaserScan laser_data_from_scan;
-sensor_msgs::PointCloud2 data_from_scan;
-laser_geometry::LaserProjection projector;
 geometry_msgs::PoseWithCovarianceStamped estimated_pose;
 bool calculate_flag = true;
 float distance_sum = 0;
@@ -88,7 +77,6 @@ void laser_callback(const sensor_msgs::LaserScanConstPtr& msg)
       laser_data_from_scan.ranges[i] = range_max;
     }
   }
-  projector.projectLaser(laser_data_from_scan, data_from_scan); 
 }
 
 void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
@@ -157,13 +145,6 @@ int main(int argc, char** argv)
           listener.lookupTransform("odom", "base_link", ros::Time(0), current_base_link_pose);
           dx = current_base_link_pose.getOrigin().x() - previous_base_link_pose.getOrigin().x();
           dy = current_base_link_pose.getOrigin().y() - previous_base_link_pose.getOrigin().y();
-          /*
-          float yaw = getYaw(previous_base_link_pose.getRotation());
-          dx = dx * cos(yaw) + dy * sin(yaw);
-          dy = dx * -sin(yaw) + dy * cos(yaw);
-          dy = 0;//test
-          std::cout << dx << ", " << dy << ", " << yaw << std::endl;
-          */
           //std::cout << "calc quat" << std::endl;
           quaternionTFToMsg(current_base_link_pose.getRotation(), qc);
           quaternionTFToMsg(previous_base_link_pose.getRotation(), qp);
@@ -172,7 +153,6 @@ int main(int argc, char** argv)
           //std::cout << "calc end" << std::endl;
         }catch(tf::TransformException &ex){
           std::cout << ex.what() << std::endl;
-          //continue;
         }
         distance_sum += fabs(dx);
         angle_sum += fabs(dtheta);
@@ -187,8 +167,6 @@ int main(int argc, char** argv)
           particles[i].move(dx, dy, dtheta);
         }
         if(calculate_flag){
-          //calculate_flag = false;
-        
           //measurement & likelihood
           //std::cout << "calculate likelihood" << std::endl;
           sensor_msgs::LaserScan laser_data_from_map;
@@ -205,9 +183,7 @@ int main(int argc, char** argv)
               rss += get_square(laser_data_from_map.ranges[angle] - laser_data_from_scan.ranges[angle]); 
             }
             particles[i].likelihood =  exp(-rss / get_square(POSITION_SIGMA) / 2.0);
-            if((int)get_grid_data(particles[i].pose.pose.position.x, particles[i].pose.pose.position.y) != 0){
-              //particles[i].likelihood = 0;
-            }
+            
             //std::cout << rss << ", " << particles[i].likelihood << std::endl;
           }
           float sum = 0;
@@ -250,7 +226,6 @@ int main(int argc, char** argv)
             poses.poses[i] = particles[i].pose.pose;
           }
         }
-        //if(map_subscribed){
         //odomの補正を計算
         //std::cout << "modfy frame odom" << std::endl;
         try{
