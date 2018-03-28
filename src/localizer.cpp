@@ -89,6 +89,13 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
   map_subscribed = true;
 }
 
+void init_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
+{
+  init_x = msg->pose.pose.position.x;
+  init_y = msg->pose.pose.position.y;
+  init_yaw = get_yaw(msg->pose.pose.orientation);
+  initialize_particles(init_x, init_y, init_yaw);
+}
 
 int main(int argc, char** argv)
 {
@@ -124,6 +131,8 @@ int main(int argc, char** argv)
     ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("/chibi18/estimated_pose", 100);
 
     ros::Publisher laser_pub = nh.advertise<sensor_msgs::LaserScan>("/chibi18/debug/scan", 100);
+
+    ros::Subscriber init_sub = nh.subscribe("/initialpose", 100, init_callback);
 
     tf::TransformBroadcaster map_broadcaster;
     tf::TransformListener listener;
@@ -441,6 +450,8 @@ float get_range_from_map(int angle, float ox, float oy, float yaw)
 
 void initialize_particles(float x, float y, float yaw)
 {
+  particles.clear();
+  poses.poses.clear();
   for(int i=0;i<N;i++){
     Particle p;
     do{
@@ -454,6 +465,8 @@ void initialize_particles(float x, float y, float yaw)
 
 void initialize_particles_map(void)
 {
+  particles.clear();
+  poses.poses.clear();
   for(int i=0;i<N;i++){
     Particle p;
     do{
