@@ -1,7 +1,7 @@
 <launch>
 
-  <arg name="ALPHA" default="10.00"/>
-  <arg name="BETA" default="0.01"/>
+  <arg name="ALPHA" default="200.00"/>
+  <arg name="BETA" default="10.00"/>
   <arg name="GAMMA" default="0.00"/>
   <arg name="MAX_VELOCITY" default="0.45"/>
   <arg name="MAX_ANGULAR_VELOCITY" default="1.0"/>
@@ -14,7 +14,7 @@
   <arg name="V_THRESHOLD" default="0.5"/>
   <arg name="OMEGA_THRESHOLD" default="0.05"/>
   <arg name="LIMIT_DISTANCE" default="1.5"/>
-  <arg name="ROBOT_RADIUS" default="0.25"/>
+  <arg name="ROBOT_RADIUS" default="0.50"/>
   <arg name="GOAL_XY_TOLERANCE" default="0.10"/>
   <arg name="GOAL_YAW_TOLERANCE" default="0.01"/>
 

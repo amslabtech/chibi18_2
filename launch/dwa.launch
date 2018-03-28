@@ -1,5 +1,5 @@
 <launch>
-  <arg name="x" default="3.0"/>
+  <arg name="x" default="4.0"/>
   <arg name="y" default="0.0"/>
   <arg name="yaw" default="1.57"/>
   <node pkg="chibi18_control" name="set_target" type="set_target">

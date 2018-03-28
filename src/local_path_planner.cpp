@@ -228,7 +228,7 @@ void evaluate(geometry_msgs::Twist& velocity)
       }
       e[v][o] += dist_val;
       e[v][o] += GAMMA * calcurate_velocity(_velocity);
-      std::cout << e[v][o] << " ";
+      //std::cout << e[v][o] << " ";
     }
     std::cout << std::endl;
   }
@@ -275,34 +275,22 @@ float calcurate_heading(float v, float omega, geometry_msgs::Pose& pose)
 
 float calcurate_distance(float v, float omega, geometry_msgs::Pose& pose)
 {
-  /*
-  geometry_msgs::Pose pose;
-  float dt = 0.01;
-  float theta = get_yaw(current_odometry.pose.pose.orientation);
-  for(float t=0;t<SIMULATE_TIME;t+=dt){
-    pose.position.x += v * cos(omega * t) * dt;
-    pose.position.y += v * sin(omega * t) * dt;
-    theta += _omega;
-  }
-  pose.orientation = tf::createQuaternionMsgFromYaw(theta);
-  */
   geometry_msgs::Pose2D object;
 
   int index = 0;
 
   float distance = LIMIT_DISTANCE;
-  for(int i=60;i<660;i+=20){//15~165
+  for(int i=20;i<=700;i+=20){//5~175
     if(_laser_data.ranges[i] < LIMIT_DISTANCE){
       object.x = _laser_data.ranges[i] * sin(LASER_RESOLUTION * i);
       object.y = _laser_data.ranges[i] * cos(LASER_RESOLUTION * i) * -1.0;
       float _distance = sqrt(pow((object.x - pose.position.x), 2) + pow((object.y - pose.position.y), 2)); 
-      _distance -= ROBOT_RADIUS;
       if(_distance < distance){
         //std::cout << "obj" << object << "pos" << position << std::endl;
         index = i;
         distance = _distance;
       }
-      if(distance < 0.3){
+      if(distance - ROBOT_RADIUS < 0.0){
         return 0;
       }
     }
