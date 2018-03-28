@@ -141,6 +141,13 @@ void pose_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
   pose_subscribed = true;
 }
 
+void init_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
+{
+  start.pose = msg->pose.pose;
+  first_aster = true;
+  global_path.poses.clear();
+}
+
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "global_path_planner");
@@ -169,6 +176,8 @@ int main(int argc, char** argv)
   ros::Publisher target_pub = nh.advertise<geometry_msgs::PoseStamped>("/chibi18/target", 100, true);
 
   ros::Subscriber pose_sub = nh.subscribe("/chibi18/estimated_pose", 100, pose_callback);
+
+  ros::Subscriber init_sub = nh.subscribe("/initialpose", 100, init_callback);
 
   tf::TransformListener listener;
 
@@ -213,6 +222,8 @@ int main(int argc, char** argv)
           --it;
         }
       }
+    }else{
+      path_pub.publish(global_path);
     }
     ros::spinOnce();
     loop_rate.sleep();
