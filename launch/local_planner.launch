@@ -1,14 +1,14 @@
 <launch>
 
-  <arg name="ALPHA" default="200.00"/>
+  <arg name="ALPHA" default="30.00"/>
   <arg name="BETA" default="10.00"/>
   <arg name="GAMMA" default="0.00"/>
   <arg name="MAX_VELOCITY" default="0.45"/>
   <arg name="MAX_ANGULAR_VELOCITY" default="1.0"/>
   <arg name="MAX_ACCELERATION" default="1.5"/>
   <arg name="MAX_ANGULAR_ACCELERATION" default="6.0"/>
-  <arg name="VELOCITY_RESOLUTION" default="0.01"/>
-  <arg name="ANGULAR_VELOCITY_RESOLUTION" default="0.05"/>
+  <arg name="VELOCITY_RESOLUTION" default="0.05"/>
+  <arg name="ANGULAR_VELOCITY_RESOLUTION" default="0.10"/>
   <arg name="SIMULATE_TIME" default="2.000"/>
   <arg name="RATIO" default="0.30"/>
   <arg name="V_THRESHOLD" default="0.5"/>
