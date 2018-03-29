@@ -69,17 +69,6 @@ void target_callback(const geometry_msgs::PoseStampedConstPtr& msg)
   target_subscribed = true;
 }
 
-void odometry_callback(const nav_msgs::OdometryConstPtr& msg)
-{
-  previous_odometry = current_odometry;
-  current_odometry = *msg;
-  velocity_odometry.linear.x = sqrt(pow(current_odometry.pose.pose.position.x-previous_odometry.pose.pose.position.x, 2) + pow(current_odometry.pose.pose.position.y-previous_odometry.pose.pose.position.y, 2))/INTERVAL;
-  velocity_odometry.angular.z = (get_yaw(current_odometry.pose.pose.orientation)-get_yaw(previous_odometry.pose.pose.orientation))/INTERVAL;
-  if(!std::isnan(velocity_odometry.angular.z)){
-    odometry_subscribed = true;
-  }
-}
-
 void laser_callback(const sensor_msgs::LaserScanConstPtr& msg)
 {
   laser_data = *msg;
@@ -112,8 +101,6 @@ int main(int argc, char** argv)
     local_nh.getParam("GOAL_YAW_TOLERANCE", GOAL_YAW_TOLERANCE);
     local_nh.getParam("GOAL_XY_TOLERANCE", GOAL_XY_TOLERANCE);
 
-    ros::Subscriber odometry_sub = nh.subscribe("/roomba/odometry", 100, odometry_callback);
-
     ros::Subscriber laser_sub = nh.subscribe("/scan", 100, laser_callback);
 
     ros::Publisher velocity_pub = nh.advertise<geometry_msgs::Twist>("/chibi18/velocity", 100);
@@ -139,6 +126,23 @@ int main(int argc, char** argv)
     poses.header.frame_id = "base_link";
 
     while(ros::ok()){
+      try{
+        previous_odometry = current_odometry;
+        tf::StampedTransform transform;
+        listener.lookupTransform("odom", "base_link", ros::Time(0), transform);
+        current_odometry.pose.pose.position.x = transform.getOrigin().x();
+        current_odometry.pose.pose.position.y = transform.getOrigin().y();
+        current_odometry.pose.pose.orientation = tf::createQuaternionMsgFromYaw(tf::getYaw(transform.getRotation()));
+
+        velocity_odometry.linear.x = sqrt(pow(current_odometry.pose.pose.position.x-previous_odometry.pose.pose.position.x, 2) + pow(current_odometry.pose.pose.position.y-previous_odometry.pose.pose.position.y, 2))/INTERVAL;
+        velocity_odometry.angular.z = (get_yaw(current_odometry.pose.pose.orientation)-get_yaw(previous_odometry.pose.pose.orientation))/INTERVAL;
+        if(!std::isnan(velocity_odometry.angular.z)){
+          odometry_subscribed = true;
+        }
+      }catch(tf::TransformException ex){
+        std::cout << ex.what() << std::endl;
+
+      }
       if(odometry_subscribed && target_subscribed && !laser_data.ranges.empty()){
         calcurate_dynamic_window();
 
@@ -167,8 +171,10 @@ int main(int argc, char** argv)
 
         float distance_to_goal = sqrt(pow(goal.pose.position.x - current_odometry.pose.pose.position.x, 2) + pow(goal.pose.position.y-current_odometry.pose.pose.position.y, 2));
         std::cout << distance_to_goal << "[m]" << std::endl;
+        /*
         velocity.twist.linear.x *= RATIO / MAX_VELOCITY;
         velocity.twist.angular.z *= (1-RATIO) / MAX_ANGULAR_VELOCITY;
+        */
 
         if(distance_to_goal < GOAL_XY_TOLERANCE){
           velocity.twist.linear.x = 0;
