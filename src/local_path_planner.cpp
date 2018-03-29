@@ -10,6 +10,7 @@
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/TwistStamped.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseArray.h>
 
 //物理量に修正すること
 float MAX_VELOCITY;
@@ -51,6 +52,8 @@ sensor_msgs::LaserScan _laser_data;//計算用
 bool odometry_subscribed = false;
 bool target_subscribed = false;
 bool move_allowed = true;
+
+geometry_msgs::PoseArray poses;
 
 void evaluate(geometry_msgs::Twist&);
 float calcurate_heading(float, float, geometry_msgs::Pose&);
@@ -127,6 +130,8 @@ int main(int argc, char** argv)
 
     ros::Publisher path_pub = nh.advertise<nav_msgs::Path>("/chibi18/local_path", 100);
 
+    ros::Publisher poses_pub = nh.advertise<geometry_msgs::PoseArray>("/chibi18/local_poses", 100);
+
     ros::Rate loop_rate(10);
 
     geometry_msgs::TwistStamped velocity;
@@ -134,6 +139,8 @@ int main(int argc, char** argv)
 
     goal.pose.orientation.w = 1;
     _goal.pose.orientation.w = 1;
+
+    poses.header.frame_id = "base_link";
 
     while(ros::ok()){
       if(odometry_subscribed && target_subscribed && !laser_data.ranges.empty()){
@@ -160,11 +167,12 @@ int main(int argc, char** argv)
            local_path.poses.push_back(pose); 
         }
         path_pub.publish(local_path);
+        poses_pub.publish(poses);
 
         float distance_to_goal = sqrt(pow(goal.pose.position.x - current_odometry.pose.pose.position.x, 2) + pow(goal.pose.position.y-current_odometry.pose.pose.position.y, 2));
         std::cout << distance_to_goal << "[m]" << std::endl;
-        velocity.twist.linear.x *= RATIO;
-        velocity.twist.angular.z *= (1-RATIO);
+        velocity.twist.linear.x *= RATIO / MAX_VELOCITY;
+        velocity.twist.angular.z *= (1-RATIO) / MAX_ANGULAR_VELOCITY;
 
         if(distance_to_goal < GOAL_XY_TOLERANCE){
           velocity.twist.linear.x = 0;
@@ -209,6 +217,7 @@ void evaluate(geometry_msgs::Twist& velocity)
     e_distance[i].resize(elements_o);
   }
   _laser_data = laser_data;
+  poses.poses.clear();
   float sum_heading = 0;
   float sum_distance = 0;
   for(int v = 0;v < elements_v;v++){
@@ -224,6 +233,7 @@ void evaluate(geometry_msgs::Twist& velocity)
         theta += _omega;
       }
       pose.orientation = tf::createQuaternionMsgFromYaw(theta);
+      poses.poses.push_back(pose);
 
       e_heading[v][o] = calcurate_heading(_velocity, _omega, pose);
       e_distance[v][o] = calcurate_distance(_velocity, _omega, pose);
@@ -264,8 +274,8 @@ void evaluate(geometry_msgs::Twist& velocity)
       }
     }
   }
-  velocity.linear.x = (window_down + j * VELOCITY_RESOLUTION) / MAX_VELOCITY;
-  velocity.angular.z = (window_left + k * ANGULAR_VELOCITY_RESOLUTION) / MAX_ANGULAR_VELOCITY;
+  velocity.linear.x = (window_down + j * VELOCITY_RESOLUTION);// / MAX_VELOCITY;
+  velocity.angular.z = (window_left + k * ANGULAR_VELOCITY_RESOLUTION);// / MAX_ANGULAR_VELOCITY;
   std::cout << std::endl;
 }
 
