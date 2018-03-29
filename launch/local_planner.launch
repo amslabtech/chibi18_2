@@ -3,18 +3,16 @@
   <arg name="ALPHA" default="100.00"/>
   <arg name="BETA" default="10.00"/>
   <arg name="GAMMA" default="0.00"/>
-  <arg name="MAX_VELOCITY" default="0.45"/>
-  <arg name="MAX_ANGULAR_VELOCITY" default="0.60"/>
+  <arg name="MAX_VELOCITY" default="0.50"/>
+  <arg name="MAX_ANGULAR_VELOCITY" default="0.75"/>
   <arg name="MAX_ACCELERATION" default="1.5"/>
   <arg name="MAX_ANGULAR_ACCELERATION" default="6.0"/>
   <arg name="VELOCITY_RESOLUTION" default="0.05"/>
   <arg name="ANGULAR_VELOCITY_RESOLUTION" default="0.10"/>
   <arg name="SIMULATE_TIME" default="2.000"/>
-  <arg name="RATIO" default="0.50"/>
-  <arg name="V_THRESHOLD" default="0.5"/>
-  <arg name="OMEGA_THRESHOLD" default="0.05"/>
+  <arg name="RATIO" default="0.40"/>
   <arg name="LIMIT_DISTANCE" default="1.5"/>
-  <arg name="ROBOT_RADIUS" default="0.50"/>
+  <arg name="ROBOT_RADIUS" default="0.40"/>
   <arg name="GOAL_XY_TOLERANCE" default="0.10"/>
   <arg name="GOAL_YAW_TOLERANCE" default="0.01"/>
 
@@ -30,8 +28,6 @@
     <param name="ANGULAR_VELOCITY_RESOLUTION" value="$(arg ANGULAR_VELOCITY_RESOLUTION)"/> 
     <param name="SIMULATE_TIME" value="$(arg SIMULATE_TIME)"/>
     <param name="RATIO" value="$(arg RATIO)"/>
-    <param name="V_THRESHOLD" value="$(arg V_THRESHOLD)"/>
-    <param name="OMEGA_THRESHOLD" value="$(arg OMEGA_THRESHOLD)"/>
     <param name="LIMIT_DISTANCE" value="$(arg LIMIT_DISTANCE)"/>
     <param name="ROBOT_RADIUS" value="$(arg ROBOT_RADIUS)"/>
     <param name="GOAL_XY_TOLERANCE" value="$(arg GOAL_XY_TOLERANCE)"/>
