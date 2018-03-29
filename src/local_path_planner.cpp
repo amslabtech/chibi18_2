@@ -23,8 +23,6 @@ const float INTERVAL = 0.100;
 float SIMULATE_TIME;
 const float LASER_RESOLUTION = 0.00436332312;//[rad]
 float RATIO;
-float V_THRESHOLD;
-float OMEGA_THRESHOLD;
 float LIMIT_DISTANCE;
 float ROBOT_RADIUS;
 float GOAL_XY_TOLERANCE;
@@ -109,8 +107,6 @@ int main(int argc, char** argv)
     local_nh.getParam("ANGULAR_VELOCITY_RESOLUTION", ANGULAR_VELOCITY_RESOLUTION);
     local_nh.getParam("SIMULATE_TIME", SIMULATE_TIME);
     local_nh.getParam("RATIO", RATIO);
-    local_nh.getParam("V_THRESHOLD", V_THRESHOLD);
-    local_nh.getParam("OMEGA_THRESHOLD", OMEGA_THRESHOLD);
     local_nh.getParam("LIMIT_DISTANCE", LIMIT_DISTANCE);
     local_nh.getParam("ROBOT_RADIUS", ROBOT_RADIUS);
     local_nh.getParam("GOAL_YAW_TOLERANCE", GOAL_YAW_TOLERANCE);
