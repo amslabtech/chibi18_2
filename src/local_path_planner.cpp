@@ -232,7 +232,7 @@ void evaluate(geometry_msgs::Twist& velocity)
       for(float t=0;t<SIMULATE_TIME;t+=dt){
         pose.position.x += _velocity * cos(_omega * t) * dt;
         pose.position.y += _velocity * sin(_omega * t) * dt;
-        theta += _omega;
+        theta += _omega * dt;
       }
       pose.orientation = tf::createQuaternionMsgFromYaw(theta);
       poses.poses.push_back(pose);
@@ -256,7 +256,7 @@ void evaluate(geometry_msgs::Twist& velocity)
 
   int j = 0;
   int k = 0;
-  float max = 0;
+  float max = e[j][k];
   for(int v = 0;v < elements_v;v++){
     for(int o = 0;o < elements_o;o++){
       e[v][o] = ALPHA * e_heading[v][o];
