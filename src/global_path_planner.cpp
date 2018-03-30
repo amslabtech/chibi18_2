@@ -382,7 +382,7 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
           cells[_index].parent_index = n_index;
         } 
       }
-
+      /*
       if(_j-1>=0){
         _index = (_j-1)*map.info.width+(_i+1);//i+1, j-1
         if((std::find(open_list.begin(), open_list.end(), _index) == open_list.end()) && (std::find(close_list.begin(), close_list.end(), _index) == close_list.end())){
@@ -423,6 +423,7 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
         }
 
       }
+      */
     }
     if(_i-1>=0){
       _index = _j*map.info.width+(_i-1);//i-1, j
@@ -442,7 +443,7 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
           cells[_index].parent_index = n_index;
         } 
       }
-
+      /*
       if(_j-1>=0){
         _index = (_j-1)*map.info.width+(_i-1);//i-1, j-1
         if((std::find(open_list.begin(), open_list.end(), _index) == open_list.end()) && (std::find(close_list.begin(), close_list.end(), _index) == close_list.end())){
@@ -483,6 +484,7 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
         }
 
       }
+      */
     }
   }
   nav_msgs::Path _path;
