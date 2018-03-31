@@ -1,23 +1,25 @@
 <launch>
-   
+
   <arg name="PARTICLE_N" default="1000"/>
   <arg name="POSITION_SIGMA" default="3.0"/>
   <arg name="ORIENTATION_SIGMA" default="0.3"/>
-  <arg name="_INIT_X_COVARIANCE" default="0.3"/>
-  <arg name="_INIT_Y_COVARIANCE" default="0.3"/>
-  <arg name="_INIT_YAW_COVARIANCE" default="0.2"/>
+  <arg name="_INIT_X_COVARIANCE" default="0.5"/>
+  <arg name="_INIT_Y_COVARIANCE" default="0.5"/>
+  <arg name="_INIT_YAW_COVARIANCE" default="0.5"/>
   <arg name="_INIT_X" default="-1.2"/>
   <arg name="_INIT_Y" default="0"/>
   <arg name="_INIT_YAW" default="0.0"/>
-  <arg name="ODOM_X_NOISE" default="0.20"/>
-  <arg name="ODOM_Y_NOISE" default="0.20"/>
-  <arg name="ODOM_YAW_NOISE" default="0.20"/>
+  <arg name="ODOM_X_NOISE" default="0.005"/>
+  <arg name="ODOM_Y_NOISE" default="0.005"/>
+  <arg name="ODOM_YAW_NOISE" default="0.100"/>
   <arg name="RANGE_MAX" default="10.0"/>
-  <arg name="MATCHING_STEP" default="8"/>
-  <arg name="UPDATE_DISTANCE" default="0.2"/>
-  <arg name="UPDATE_ANGLE" default="0.1"/>
+  <arg name="MATCHING_STEP" default="4"/>
+  <arg name="UPDATE_DISTANCE" default="0.20"/>
+  <arg name="UPDATE_ANGLE" default="0.10"/>
+  <arg name="ALPHA_SLOW" default="0.001"/>
+  <arg name="ALPHA_FAST" default="0.1"/>
 
-  <node pkg="chibi18_control" name="localizer" type="localizer" output="screen">
+  <node pkg="chibi18_control" name="localizer" type="localizer">
     <param name="N" value="$(arg PARTICLE_N)"/>
     <param name="POSITION_SIGMA" value="$(arg POSITION_SIGMA)"/>
     <param name="ORIENTATION_SIGMA" value="$(arg ORIENTATION_SIGMA)"/>
@@ -34,6 +36,8 @@
     <param name="MATCHING_STEP" value="$(arg MATCHING_STEP)"/>
     <param name="UPDATE_DISTANCE" value="$(arg UPDATE_DISTANCE)"/>
     <param name="UPDATE_ANGLE" value="$(arg UPDATE_ANGLE)"/>
+    <param name="ALPHA_SLOW" value="$(arg ALPHA_SLOW)"/>
+    <param name="ALPHA_FAST" value="$(arg ALPHA_FAST)"/>
   </node>
 
 </launch>
