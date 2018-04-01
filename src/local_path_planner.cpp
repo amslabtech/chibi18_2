@@ -86,7 +86,7 @@ int main(int argc, char** argv)
 
     ros::NodeHandle local_nh("~");
     local_nh.getParam("ALPHA", ALPHA);
-    local_nh.getParam("BETA", BETA);    
+    local_nh.getParam("BETA", BETA);
     local_nh.getParam("GAMMA", GAMMA);
     local_nh.getParam("MAX_VELOCITY", MAX_VELOCITY);
     local_nh.getParam("MAX_ANGULAR_VELOCITY", MAX_ANGULAR_VELOCITY);
@@ -149,7 +149,7 @@ int main(int argc, char** argv)
         listener.transformPose("odom", _goal, goal);
 
         evaluate(velocity.twist);
-        
+
         //calculate local path
         float dt = 0.01;
         nav_msgs::Path local_path;
@@ -164,7 +164,7 @@ int main(int argc, char** argv)
            _pose.pose.position.y += velocity.twist.linear.x * sin(velocity.twist.angular.z * t) * dt;
            _pose.pose.orientation.w = 1;
            listener.transformPose("odom", _pose, pose);
-           local_path.poses.push_back(pose); 
+           local_path.poses.push_back(pose);
         }
         path_pub.publish(local_path);
         poses_pub.publish(poses);
@@ -205,7 +205,7 @@ void evaluate(geometry_msgs::Twist& velocity)
   std::vector<std::vector<bool> > allowed;
   std::vector<std::vector<float> > e_heading;
   std::vector<std::vector<float> > e_distance;
-  
+
   int elements_v = int((window_up - window_down)/VELOCITY_RESOLUTION);
   int elements_o = int((window_right - window_left)/ANGULAR_VELOCITY_RESOLUTION);
   e.resize(elements_v);
@@ -225,7 +225,7 @@ void evaluate(geometry_msgs::Twist& velocity)
   for(int v = 0;v < elements_v;v++){
     for(int o = 0;o < elements_o;o++){
       float _velocity = window_down + v * VELOCITY_RESOLUTION;
-      float _omega = window_left + o * ANGULAR_VELOCITY_RESOLUTION; 
+      float _omega = window_left + o * ANGULAR_VELOCITY_RESOLUTION;
       geometry_msgs::Pose pose;
       float dt = 0.01;
       float theta = 0;
@@ -252,7 +252,7 @@ void evaluate(geometry_msgs::Twist& velocity)
       //std::cout << e_distance[i][j] << " ";
     }
     //std::cout << std::endl;
-  } 
+  }
 
   int j = 0;
   int k = 0;
@@ -260,7 +260,7 @@ void evaluate(geometry_msgs::Twist& velocity)
   for(int v = 0;v < elements_v;v++){
     for(int o = 0;o < elements_o;o++){
       e[v][o] = ALPHA * e_heading[v][o];
-      float dist_val = BETA *e_distance[v][o]; 
+      float dist_val = BETA *e_distance[v][o];
       if(dist_val == 0.0){
         allowed[v][o] = false;
       }else{
@@ -270,9 +270,9 @@ void evaluate(geometry_msgs::Twist& velocity)
       //e[v][o] += GAMMA * calcurate_velocity(_velocity);
 
       if((e[v][o] > max) && (allowed[v][o])){
-        max = e[v][o]; 
-	j=v;
-	k=o;
+        max = e[v][o];
+        j=v;
+        k=o;
       }
     }
   }
@@ -294,7 +294,7 @@ float calcurate_heading(float v, float omega, geometry_msgs::Pose& pose)
   float dtheta = fabs(get_yaw(goal.pose.orientation) - _theta);
   float val2 = exp(-dtheta);
   float val = exp(-distance);
-  //std::cout << distance << " "; 
+  //std::cout << distance << " ";
   return val;// + val2;
 }
 
@@ -309,7 +309,7 @@ float calcurate_distance(float v, float omega, geometry_msgs::Pose& pose)
     if(_laser_data.ranges[i] < LIMIT_DISTANCE){
       object.x = _laser_data.ranges[i] * sin(LASER_RESOLUTION * i);
       object.y = _laser_data.ranges[i] * cos(LASER_RESOLUTION * i) * -1.0;
-      float _distance = sqrt(pow((object.x - pose.position.x), 2) + pow((object.y - pose.position.y), 2)); 
+      float _distance = sqrt(pow((object.x - pose.position.x), 2) + pow((object.y - pose.position.y), 2));
       if(_distance < distance){
         //std::cout << "obj" << object << "pos" << position << std::endl;
         index = i;
