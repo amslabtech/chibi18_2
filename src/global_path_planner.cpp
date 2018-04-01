@@ -258,16 +258,17 @@ int get_j_from_y(float y)
 
 int get_heuristic(int diff_x, int diff_y)
 {
+  /*
   diff_x = abs(diff_x);
   diff_y = abs(diff_y);
   return diff_x + diff_y;
   if(diff_x > diff_y){
-    std::cout << "h:" << diff_x << std::endl;
     return diff_x;
   }else{
-    std::cout << "h:" << diff_y << std::endl;
     return diff_y;
   }
+  */
+  return sqrt(diff_x*diff_x + diff_y*diff_y);
 }
 
 void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStamped& _goal)
@@ -378,7 +379,7 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
           cells[_index].parent_index = n_index;
         }
       }
-      /*
+
       if(_j-1>=0){
         _index = (_j-1)*map.info.width+(_i+1);//i+1, j-1
         if((std::find(open_list.begin(), open_list.end(), _index) == open_list.end()) && (std::find(close_list.begin(), close_list.end(), _index) == close_list.end())){
@@ -419,7 +420,7 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
         }
 
       }
-      */
+
     }
     if(_i-1>=0){
       _index = _j*map.info.width+(_i-1);//i-1, j
@@ -439,7 +440,7 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
           cells[_index].parent_index = n_index;
         }
       }
-      /*
+
       if(_j-1>=0){
         _index = (_j-1)*map.info.width+(_i-1);//i-1, j-1
         if((std::find(open_list.begin(), open_list.end(), _index) == open_list.end()) && (std::find(close_list.begin(), close_list.end(), _index) == close_list.end())){
@@ -480,7 +481,7 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
         }
 
       }
-      */
+
     }
   }
   nav_msgs::Path _path;
