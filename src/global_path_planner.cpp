@@ -49,6 +49,8 @@ int get_index(float, float);
 int get_heuristic(int, int);
 void calculate_aster(geometry_msgs::PoseStamped&, geometry_msgs::PoseStamped&);
 float get_yaw(geometry_msgs::Quaternion);
+void smooth(nav_msgs::Path&);
+
 bool first_aster = true;
 bool pose_subscribed = false;
 
@@ -509,6 +511,7 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
       break;
     }
   }
+  //smooth(global_path);
   std::cout << "global path generated!" << std::endl;
 }
 
@@ -518,4 +521,28 @@ float get_yaw(geometry_msgs::Quaternion q)
   tf::Quaternion quat(q.x, q.y, q.z, q.w);
   tf::Matrix3x3(quat).getRPY(r, p, y);
   return y;
+}
+
+void smooth(nav_msgs::Path& path)
+{
+  float tolerance = 0.001;
+  float weight_data = 0.005;
+  float weight_smooth = 0.002;
+  nav_msgs::Path new_path = path;
+  float change = tolerance;
+  while((change >= tolerance) && (ros::ok())){
+    std::cout << "smoothing..." << std::endl;
+    change = 0.0;
+    for(int i=1;i<path.poses.size();i++){
+      float _x = new_path.poses[i].pose.position.x;
+      new_path.poses[i].pose.position.x += weight_data * (path.poses[i].pose.position.x - new_path.poses[i].pose.position.x);
+      new_path.poses[i].pose.position.x += weight_smooth * (new_path.poses[i-1].pose.position.x + new_path.poses[i+1].pose.position.x - 2.0 * new_path.poses[i].pose.position.x);
+      change += fabs(_x - new_path.poses[i].pose.position.x);
+      float _y = new_path.poses[i].pose.position.y;
+      new_path.poses[i].pose.position.y += weight_data * (path.poses[i].pose.position.y - new_path.poses[i].pose.position.y);
+      new_path.poses[i].pose.position.y += weight_smooth * (new_path.poses[i-1].pose.position.y + new_path.poses[i+1].pose.position.y - 2.0 * new_path.poses[i].pose.position.y);
+      change += fabs(_y - new_path.poses[i].pose.position.y);
+    }
+    std::cout << "change:" << change << std::endl;
+  }
 }
