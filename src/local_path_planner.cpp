@@ -37,7 +37,7 @@ float GAMMA = 0;//velocity
 float window_left = -MAX_ANGULAR_VELOCITY;
 float window_up = MAX_VELOCITY;
 float window_right = MAX_ANGULAR_VELOCITY;
-float window_down = -MAX_VELOCITY;
+float window_down = 0;
 
 //subscribe用
 nav_msgs::Odometry previous_odometry;
@@ -126,6 +126,7 @@ int main(int argc, char** argv)
     poses.header.frame_id = "base_link";
 
     while(ros::ok()){
+      std::cout << "LOOP" << std::endl;
       try{
         previous_odometry = current_odometry;
         tf::StampedTransform transform;
@@ -187,12 +188,13 @@ int main(int argc, char** argv)
         }
 
         std::cout << "order" << std::endl;
-        std::cout << velocity.twist << std::endl;
+        std::cout << velocity.twist.linear.x << "[m/s], " << velocity.twist.angular.z << "[rad/s]" << std::endl;
         std::cout << "(" << current_odometry.pose.pose.position.x << ", " << current_odometry.pose.pose.position.y << ", " << get_yaw(current_odometry.pose.pose.orientation) << ")" << std::endl;
 
         velocity_pub.publish(velocity.twist);
         std::cout << "goal:" <<  goal.pose.position.x <<" "<< goal.pose.position.y << std::endl;
       }
+      std::cout << std::endl;
       ros::spinOnce();
       loop_rate.sleep();
     }
@@ -226,6 +228,7 @@ void evaluate(geometry_msgs::Twist& velocity)
     for(int o = 0;o < elements_o;o++){
       float _velocity = window_down + v * VELOCITY_RESOLUTION;
       float _omega = window_left + o * ANGULAR_VELOCITY_RESOLUTION;
+      //std::cout << std::setprecision(4) << "(" << _velocity << "," << _omega << ")";
       geometry_msgs::Pose pose;
       float dt = 0.01;
       float theta = 0;
@@ -243,6 +246,7 @@ void evaluate(geometry_msgs::Twist& velocity)
       sum_heading += e_heading[v][o];
       sum_distance += e_distance[v][o];
     }
+    //std::cout << std::endl;
   }
   //正規化
   for(int i=0;i < elements_v;i++){
@@ -260,12 +264,14 @@ void evaluate(geometry_msgs::Twist& velocity)
   for(int v = 0;v < elements_v;v++){
     for(int o = 0;o < elements_o;o++){
       e[v][o] = ALPHA * e_heading[v][o];
+      //std::cout << std::setprecision(4) << e[v][o] << " ";
       float dist_val = BETA *e_distance[v][o];
       if(dist_val == 0.0){
         allowed[v][o] = false;
       }else{
         allowed[v][o] = true;
       }
+      //std::cout << std::setprecision(4) << dist_val << " ";
       e[v][o] += dist_val;
       //e[v][o] += GAMMA * calcurate_velocity(_velocity);
 
@@ -275,10 +281,11 @@ void evaluate(geometry_msgs::Twist& velocity)
         k=o;
       }
     }
+    //std::cout << std::endl;
   }
   velocity.linear.x = (window_down + j * VELOCITY_RESOLUTION);// / MAX_VELOCITY;
   velocity.angular.z = (window_left + k * ANGULAR_VELOCITY_RESOLUTION);// / MAX_ANGULAR_VELOCITY;
-  std::cout << std::endl;
+  //std::cout << std::endl;
 }
 
 float calcurate_heading(float v, float omega, geometry_msgs::Pose& pose)
@@ -288,14 +295,15 @@ float calcurate_heading(float v, float omega, geometry_msgs::Pose& pose)
   float _theta = get_yaw(pose.orientation);
   float current_theta = get_yaw(current_odometry.pose.pose.orientation);
   float __x = _x * cos(current_theta) - _y * sin(current_theta) + current_odometry.pose.pose.position.x;
-  float __y = _y * sin(current_theta) + _y * cos(current_theta) + current_odometry.pose.pose.position.y;
+  float __y = _x * sin(current_theta) + _y * cos(current_theta) + current_odometry.pose.pose.position.y;
   _theta += current_theta;
   float distance = sqrt(pow(__x - goal.pose.position.x, 2) + pow(__y - goal.pose.position.y, 2));
+  //std::cout << std::setprecision(4) << distance << " ";
   float dtheta = fabs(get_yaw(goal.pose.orientation) - _theta);
   float val2 = exp(-dtheta);
   float val = exp(-distance);
   //std::cout << distance << " ";
-  return val;// + val2;
+  return val;//+ val2;
 }
 
 float calcurate_distance(float v, float omega, geometry_msgs::Pose& pose)
