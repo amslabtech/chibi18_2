@@ -9,14 +9,14 @@ void set_pose(float, float, float);
 int main(int argc, char** argv){
   ros::init(argc, argv, "waypoint_publisher");
   ros::NodeHandle nh;
-  
+
   ros::Rate loop_rate(10);
 
   ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 100);
 
-  set_pose(12, -0.5, 0);
+  set_pose(11.5, -0.5, 0);
   set_pose(12, 13.5, 0);
-  set_pose(-22, 15, 0);
+  set_pose(-21.5, 14.5, 0);
   set_pose(-22, 1, 0);
   set_pose(0, 0, 0);
 
