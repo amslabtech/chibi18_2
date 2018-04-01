@@ -55,6 +55,7 @@ void smooth(nav_msgs::Path&);
 
 bool first_aster = true;
 bool pose_subscribed = false;
+bool global_path_updated = false;
 
 void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
@@ -201,8 +202,10 @@ int main(int argc, char** argv)
     }
     if(!global_path.poses.empty() && !waypoint_list.empty()){
       std::vector<geometry_msgs::PoseStamped>::iterator it = global_path.poses.begin() + waypoint_list[0];
-
-      path_pub.publish(global_path);
+      if(global_path_updated){
+        path_pub.publish(global_path);
+        global_path_updated = false;
+      }
       if(pose_subscribed){
         while((it != global_path.poses.begin()) && (it != global_path.poses.end())){
           std::cout << global_path.poses.size() << std::endl;
@@ -219,15 +222,10 @@ int main(int argc, char** argv)
               waypoint_list.erase(waypoint_list.begin());
             }
             break;
-          }else if(it == global_path.poses.end() -1){
-            //target_pub.publish(*it);
-            //break;
           }
           --it;
         }
       }
-    }else{
-      path_pub.publish(global_path);
     }
     ros::spinOnce();
     loop_rate.sleep();
@@ -274,6 +272,7 @@ int get_heuristic(int diff_x, int diff_y)
 
 void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStamped& _goal)
 {
+  global_path_updated = true;
   //cells.clear();
   open_list.clear();
   close_list.clear();
