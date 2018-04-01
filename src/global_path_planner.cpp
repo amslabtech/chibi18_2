@@ -16,9 +16,10 @@ geometry_msgs::PoseWithCovarianceStamped estimated_pose;
 
 nav_msgs::OccupancyGrid _cost_map;//for debug
 
-float margin_wall;
+float MARGIN_WALL;
+float WAYPOINT_DISTANCE;
 
-class Cell 
+class Cell
 {
 public:
   Cell(void)
@@ -50,7 +51,6 @@ void calculate_aster(geometry_msgs::PoseStamped&, geometry_msgs::PoseStamped&);
 float get_yaw(geometry_msgs::Quaternion);
 bool first_aster = true;
 bool pose_subscribed = false;
-float waypoint_distance;
 
 void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
@@ -61,8 +61,8 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
   _cost_map.info = map.info;
   _cost_map.data.resize(map.info.height*map.info.width);
 
-  int margin_wall_step = 127 / (margin_wall / map.info.resolution);
-  std::cout << "margin_wall_step:" << margin_wall_step << std::endl;
+  int MARGIN_WALL_step = 127 / (MARGIN_WALL / map.info.resolution);
+  std::cout << "MARGIN_WALL_step:" << MARGIN_WALL_step << std::endl;
 
   std::vector<int> wall_list;
 
@@ -84,37 +84,37 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
     if(i==wall_list.size()){
       break;
     }
-    if(cost < margin_wall_step){
+    if(cost < MARGIN_WALL_step){
       std::cout << "end" << cost << std::endl;
       break;
     }
-    int _i = wall_list[i] % map.info.width; 
+    int _i = wall_list[i] % map.info.width;
     int _j = (wall_list[i] - _i) / map.info.height;
     if(_i-1>0){
       int index = (_i-1) + (_j) * map.info.width;
       if(cells[index].cost < cost){
-        cells[index].cost = cost - margin_wall_step;
+        cells[index].cost = cost - MARGIN_WALL_step;
         wall_list.push_back(index);
       }
     }
     if(_i+1<map.info.width){
       int index = (_i+1) + (_j) * map.info.width;
       if(cells[index].cost < cost){
-        cells[index].cost = cost - margin_wall_step;
+        cells[index].cost = cost - MARGIN_WALL_step;
         wall_list.push_back(index);
       }
     }
     if(_j-1>0){
       int index = (_i) + (_j-1) * map.info.width;
       if(cells[index].cost < cost){
-        cells[index].cost = cost - margin_wall_step;
+        cells[index].cost = cost - MARGIN_WALL_step;
         wall_list.push_back(index);
       }
     }
     if(_j+1<map.info.width){
       int index = (_i) + (_j+1) * map.info.width;
       if(cells[index].cost < cost){
-        cells[index].cost = cost - margin_wall_step;
+        cells[index].cost = cost - MARGIN_WALL_step;
         wall_list.push_back(index);
       }
     }
@@ -156,12 +156,12 @@ int main(int argc, char** argv)
 
   local_nh.getParam("START_X", start.pose.position.x);
   local_nh.getParam("START_Y", start.pose.position.y);
-  local_nh.getParam("WAYPOINT_DISTANCE", waypoint_distance);
-  local_nh.getParam("MARGIN_WALL", margin_wall);
+  local_nh.getParam("WAYPOINT_DISTANCE", WAYPOINT_DISTANCE);
+  local_nh.getParam("MARGIN_WALL", MARGIN_WALL);
   //std::cout << goal.pose.position.x << " " << goal.pose.position.y<<std::endl;
   start.pose.orientation.w = 1;
   goal.pose.orientation.w = 1;
- 
+
   start.header.frame_id = "map";
   goal.header.frame_id = "map";
 
@@ -193,7 +193,7 @@ int main(int argc, char** argv)
         _cost_map.data[i] = cells[i].cost;
       }
       cost_pub.publish(_cost_map);
-      
+
     }
     if(!global_path.poses.empty() && !waypoint_list.empty()){
       std::vector<geometry_msgs::PoseStamped>::iterator it = global_path.poses.begin() + waypoint_list[0];
@@ -202,16 +202,16 @@ int main(int argc, char** argv)
       if(pose_subscribed){
         while((it != global_path.poses.begin()) && (it != global_path.poses.end())){
           std::cout << global_path.poses.size() << std::endl;
-          float error = pow(it->pose.position.x - estimated_pose.pose.pose.position.x, 2) + pow(it->pose.position.y - estimated_pose.pose.pose.position.y, 2); 
+          float error = pow(it->pose.position.x - estimated_pose.pose.pose.position.x, 2) + pow(it->pose.position.y - estimated_pose.pose.pose.position.y, 2);
           if(error < 0){
             std::cout << "pow error" << std::endl;
             break;
           }
           float distance = sqrt(error);
           std::cout << "d=" << distance << "[m]" << std::endl;
-          if(waypoint_distance > distance){
+          if(WAYPOINT_DISTANCE > distance){
             target_pub.publish(*it);
-            if(distance < waypoint_distance / 2.0){
+            if(distance < WAYPOINT_DISTANCE / 2.0){
               waypoint_list.erase(waypoint_list.begin());
             }
             break;
@@ -284,12 +284,12 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
       //cells[i].cost = 100;
     }
   }
-  
+
   _start.pose.position.x = ((int)(_start.pose.position.x / map.info.resolution) * map.info.resolution);
   _start.pose.position.y = ((int)(_start.pose.position.y / map.info.resolution) * map.info.resolution);
   _goal.pose.position.x = ((int)(_goal.pose.position.x / map.info.resolution) * map.info.resolution);
   _goal.pose.position.y = ((int)(_goal.pose.position.y / map.info.resolution) * map.info.resolution);
-  
+
   int start_index = get_index(_start.pose.position.x, _start.pose.position.y);
   int start_i = start_index % map.info.width;
   int start_j = (start_index - start_i) / map.info.width;
@@ -337,11 +337,11 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
       }else if(std::find(open_list.begin(), open_list.end(), _index) != open_list.end()){
         if(cells[n_index].step + 1 < cells[_index].step){
           cells[_index].parent_index = n_index;
-        } 
+        }
       }else if(std::find(close_list.begin(), close_list.end(), _index) != close_list.end()){
         if(cells[n_index].step + 1 < cells[_index].step){
           cells[_index].parent_index = n_index;
-        } 
+        }
       }
     }
     if(_j+1<map.info.width){
@@ -356,11 +356,11 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
       }else if(std::find(open_list.begin(), open_list.end(), _index) != open_list.end()){
         if(cells[n_index].step + 1 < cells[_index].step){
           cells[_index].parent_index = n_index;
-        } 
+        }
       }else if(std::find(close_list.begin(), close_list.end(), _index) != close_list.end()){
         if(cells[n_index].step + 1 < cells[_index].step){
           cells[_index].parent_index = n_index;
-        } 
+        }
       }
 
     }
@@ -376,11 +376,11 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
       }else if(std::find(open_list.begin(), open_list.end(), _index) != open_list.end()){
         if(cells[n_index].step + 1 < cells[_index].step){
           cells[_index].parent_index = n_index;
-        } 
+        }
       }else if(std::find(close_list.begin(), close_list.end(), _index) != close_list.end()){
         if(cells[n_index].step + 1 < cells[_index].step){
           cells[_index].parent_index = n_index;
-        } 
+        }
       }
       /*
       if(_j-1>=0){
@@ -395,11 +395,11 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
         }else if(std::find(open_list.begin(), open_list.end(), _index) != open_list.end()){
           if(cells[n_index].step + 1 < cells[_index].step){
             cells[_index].parent_index = n_index;
-          } 
+          }
         }else if(std::find(close_list.begin(), close_list.end(), _index) != close_list.end()){
           if(cells[n_index].step + 1 < cells[_index].step){
             cells[_index].parent_index = n_index;
-          } 
+          }
         }
 
       }
@@ -415,11 +415,11 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
         }else if(std::find(open_list.begin(), open_list.end(), _index) != open_list.end()){
           if(cells[n_index].step + 1 < cells[_index].step){
             cells[_index].parent_index = n_index;
-          } 
+          }
         }else if(std::find(close_list.begin(), close_list.end(), _index) != close_list.end()){
           if(cells[n_index].step + 1 < cells[_index].step){
             cells[_index].parent_index = n_index;
-          } 
+          }
         }
 
       }
@@ -437,11 +437,11 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
       }else if(std::find(open_list.begin(), open_list.end(), _index) != open_list.end()){
         if(cells[n_index].step + 1 < cells[_index].step){
           cells[_index].parent_index = n_index;
-        } 
+        }
       }else if(std::find(close_list.begin(), close_list.end(), _index) != close_list.end()){
         if(cells[n_index].step + 1 < cells[_index].step){
           cells[_index].parent_index = n_index;
-        } 
+        }
       }
       /*
       if(_j-1>=0){
@@ -456,11 +456,11 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
         }else if(std::find(open_list.begin(), open_list.end(), _index) != open_list.end()){
           if(cells[n_index].step + 1 < cells[_index].step){
             cells[_index].parent_index = n_index;
-          } 
+          }
         }else if(std::find(close_list.begin(), close_list.end(), _index) != close_list.end()){
           if(cells[n_index].step + 1 < cells[_index].step){
             cells[_index].parent_index = n_index;
-          } 
+          }
         }
 
       }
@@ -476,11 +476,11 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
         }else if(std::find(open_list.begin(), open_list.end(), _index) != open_list.end()){
           if(cells[n_index].step + 1 < cells[_index].step){
             cells[_index].parent_index = n_index;
-          } 
+          }
         }else if(std::find(close_list.begin(), close_list.end(), _index) != close_list.end()){
           if(cells[n_index].step + 1 < cells[_index].step){
             cells[_index].parent_index = n_index;
-          } 
+          }
         }
 
       }

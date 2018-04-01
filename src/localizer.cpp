@@ -29,21 +29,21 @@ private:
 int N;//number of partcles
 float POSITION_SIGMA;
 float ORIENTATION_SIGMA;
-float init_x_cov;
-float init_y_cov;
-float init_yaw_cov;
-float init_x;
-float init_y;
-float init_yaw;
-float odom_yaw_noise;
-float odom_x_noise;
-float odom_y_noise;
-float range_max;
-int matching_step;
-float update_distance;
-float update_angle;
-float alpha_slow;
-float alpha_fast;
+float INIT_X_COV;
+float INIT_Y_COV;
+float INIT_YAW_COV;
+float INIT_X;
+float INIT_Y;
+float INIT_YAW;
+float ODOM_YAW_NOISE;
+float ODOM_X_NOISE;
+float ODOM_Y_NOISE;
+float RANGE_MAX;
+int MATCHING_STEP;
+float UPDATE_DISTANCE;
+float UPDATE_ANGLE;
+float ALPHA_SLOW;
+float ALPHA_FAST;
 nav_msgs::OccupancyGrid map;
 bool map_subscribed = false;
 std::vector<Particle>  particles;
@@ -79,9 +79,9 @@ void laser_callback(const sensor_msgs::LaserScanConstPtr& msg)
   laser_data_from_scan = *msg;
   for(int i=0;i<720;i++){
     if(std::isinf(laser_data_from_scan.ranges[i])){
-      laser_data_from_scan.ranges[i] = range_max;
-    }else if(laser_data_from_scan.ranges[i] > range_max){
-      laser_data_from_scan.ranges[i] = range_max;
+      laser_data_from_scan.ranges[i] = RANGE_MAX;
+    }else if(laser_data_from_scan.ranges[i] > RANGE_MAX){
+      laser_data_from_scan.ranges[i] = RANGE_MAX;
     }
   }
 }
@@ -90,7 +90,7 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   map = *msg;
 
-  initialize_particles(init_x, init_y, init_yaw);
+  initialize_particles(INIT_X, INIT_Y, INIT_YAW);
   //initialize_particles_map();
 
   map_subscribed = true;
@@ -98,10 +98,10 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 
 void init_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
 {
-  init_x = msg->pose.pose.position.x;
-  init_y = msg->pose.pose.position.y;
-  init_yaw = get_yaw(msg->pose.pose.orientation);
-  initialize_particles(init_x, init_y, init_yaw);
+  INIT_X = msg->pose.pose.position.x;
+  INIT_Y = msg->pose.pose.position.y;
+  INIT_YAW = get_yaw(msg->pose.pose.orientation);
+  initialize_particles(INIT_X, INIT_Y, INIT_YAW);
 }
 
 int main(int argc, char** argv)
@@ -113,21 +113,21 @@ int main(int argc, char** argv)
     local_nh.getParam("N", N);
     local_nh.getParam("POSITION_SIGMA", POSITION_SIGMA);
     local_nh.getParam("ORIENTATION_SIGMA", ORIENTATION_SIGMA);
-    local_nh.getParam("INIT_X_COVARIANCE", init_x_cov);
-    local_nh.getParam("INIT_Y_COVARIANCE", init_y_cov);
-    local_nh.getParam("INIT_YAW_COVARIANCE", init_yaw_cov);
-    local_nh.getParam("INIT_X", init_x);
-    local_nh.getParam("INIT_Y", init_y);
-    local_nh.getParam("INIT_YAW", init_yaw);
-    local_nh.getParam("ODOM_X_NOISE", odom_x_noise);
-    local_nh.getParam("ODOM_Y_NOISE", odom_y_noise);
-    local_nh.getParam("ODOM_YAW_NOISE", odom_yaw_noise);
-    local_nh.getParam("RANGE_MAX", range_max);
-    local_nh.getParam("MATCHING_STEP", matching_step);
-    local_nh.getParam("UPDATE_DISTANCE", update_distance);
-    local_nh.getParam("UPDATE_ANGLE", update_angle);
-    local_nh.getParam("ALPHA_SLOW", alpha_slow);
-    local_nh.getParam("ALPHA_FAST", alpha_fast);
+    local_nh.getParam("INIT_X_COVARIANCE", INIT_X_COV);
+    local_nh.getParam("INIT_Y_COVARIANCE", INIT_Y_COV);
+    local_nh.getParam("INIT_YAW_COVARIANCE", INIT_YAW_COV);
+    local_nh.getParam("INIT_X", INIT_X);
+    local_nh.getParam("INIT_Y", INIT_Y);
+    local_nh.getParam("INIT_YAW", INIT_YAW);
+    local_nh.getParam("ODOM_X_NOISE", ODOM_X_NOISE);
+    local_nh.getParam("ODOM_Y_NOISE", ODOM_Y_NOISE);
+    local_nh.getParam("ODOM_YAW_NOISE", ODOM_YAW_NOISE);
+    local_nh.getParam("RANGE_MAX", RANGE_MAX);
+    local_nh.getParam("MATCHING_STEP", MATCHING_STEP);
+    local_nh.getParam("UPDATE_DISTANCE", UPDATE_DISTANCE);
+    local_nh.getParam("UPDATE_ANGLE", UPDATE_ANGLE);
+    local_nh.getParam("ALPHA_SLOW", ALPHA_SLOW);
+    local_nh.getParam("ALPHA_FAST", ALPHA_FAST);
 
     std::srand(time(NULL));
 
@@ -146,13 +146,13 @@ int main(int argc, char** argv)
     tf::TransformBroadcaster map_broadcaster;
     tf::TransformListener listener;
     tf::StampedTransform temp_tf_stamped;
-    temp_tf_stamped = tf::StampedTransform(tf::Transform(tf::createQuaternionFromYaw(init_yaw), tf::Vector3(init_x, init_y, 0)), ros::Time::now(), "map", "odom");
+    temp_tf_stamped = tf::StampedTransform(tf::Transform(tf::createQuaternionFromYaw(INIT_YAW), tf::Vector3(INIT_X, INIT_Y, 0)), ros::Time::now(), "map", "odom");
 
-    estimated_pose.pose.pose.position.x = init_x;
-    estimated_pose.pose.pose.position.y = init_y;
-    estimated_pose.pose.pose.orientation = tf::createQuaternionMsgFromYaw(init_yaw);
+    estimated_pose.pose.pose.position.x = INIT_X;
+    estimated_pose.pose.pose.position.y = INIT_Y;
+    estimated_pose.pose.pose.orientation = tf::createQuaternionMsgFromYaw(INIT_YAW);
 
-    current_base_link_pose = tf::StampedTransform(tf::Transform(tf::createQuaternionFromYaw(init_yaw), tf::Vector3(init_x, init_y, 0)), ros::Time::now(), "odom", "base_link");
+    current_base_link_pose = tf::StampedTransform(tf::Transform(tf::createQuaternionFromYaw(INIT_YAW), tf::Vector3(INIT_X, INIT_Y, 0)), ros::Time::now(), "odom", "base_link");
     previous_base_link_pose = current_base_link_pose;
     ros::Rate loop_rate(10);
 
@@ -180,10 +180,10 @@ int main(int argc, char** argv)
         }
         distance_sum += fabs(dx);
         angle_sum += fabs(dtheta);
-        if(distance_sum > update_distance){
+        if(distance_sum > UPDATE_DISTANCE){
           distance_sum = 0;
           calculate_flag = true;
-        }else if(angle_sum > update_angle){
+        }else if(angle_sum > UPDATE_ANGLE){
           angle_sum = 0;
           calculate_flag = true;
         }
@@ -198,12 +198,12 @@ int main(int argc, char** argv)
           laser_data_from_map.header.frame_id = "map";
           for(int i=0;i<N;i++){
             float p_yaw = get_yaw(particles[i].pose.pose.orientation);
-            for(int angle=0;angle<720;angle+=matching_step){
+            for(int angle=0;angle<720;angle+=MATCHING_STEP){
               laser_data_from_map.ranges[angle] = get_range_from_map(angle, particles[i].pose.pose.position.x, particles[i].pose.pose.position.y, p_yaw);
             }
             //laser_pub.publish(laser_data_from_map);
             float rss = 0;//残差平方和
-            for(int angle=0;angle<720;angle+=matching_step){
+            for(int angle=0;angle<720;angle+=MATCHING_STEP){
               rss += get_square(laser_data_from_map.ranges[angle] - laser_data_from_scan.ranges[angle]);
             }
             particles[i].likelihood =  exp(-rss / get_square(POSITION_SIGMA) / 2.0);
@@ -230,12 +230,12 @@ int main(int argc, char** argv)
           if(w_slow == 0.0){
             w_slow = w_average;
           }else{
-            w_slow +=  alpha_slow * (w_average - w_slow);
+            w_slow +=  ALPHA_SLOW * (w_average - w_slow);
           }
           if(w_fast == 0.0){
             w_fast = w_average;
           }else{
-            w_fast +=  alpha_fast * (w_average - w_fast);
+            w_fast +=  ALPHA_FAST * (w_average - w_fast);
           }
           std::cout << "w_slow:" << w_slow << ", w_fast:" << w_fast << ", w_ave:" << w_average << std::endl;
           /*
@@ -377,11 +377,11 @@ Particle::Particle(void)
 
 void Particle::initialize(int width, int height, float resolution, geometry_msgs::Pose origin, int N, float x, float y, float yaw)
 {
-  std::normal_distribution<> rand_x(x, init_x_cov);
+  std::normal_distribution<> rand_x(x, INIT_X_COV);
   pose.pose.position.x = rand_x(mt);
-  std::normal_distribution<> rand_y(y, init_y_cov);
+  std::normal_distribution<> rand_y(y, INIT_Y_COV);
   pose.pose.position.y = rand_y(mt);
-  std::normal_distribution<> rand_yaw(yaw, init_yaw_cov);
+  std::normal_distribution<> rand_yaw(yaw, INIT_YAW_COV);
   quaternionTFToMsg(tf::createQuaternionFromYaw(rand_yaw(mt)), pose.pose.orientation);
   likelihood = 1.0 / (float)N;
 }
@@ -399,9 +399,9 @@ void Particle::initialize_map(void)
 void Particle::move(float dx, float dy, float dtheta)
 {
   float yaw = get_yaw(pose.pose.orientation);
-  std::normal_distribution<> rand_x(0, odom_x_noise);
-  std::normal_distribution<> rand_y(0, odom_y_noise);
-  std::normal_distribution<> rand_yaw(0, odom_yaw_noise);
+  std::normal_distribution<> rand_x(0, ODOM_X_NOISE);
+  std::normal_distribution<> rand_y(0, ODOM_Y_NOISE);
+  std::normal_distribution<> rand_yaw(0, ODOM_YAW_NOISE);
   float distance = sqrt(dx * dx + dy * dy);
   pose.pose.position.x += distance * cos(yaw) + rand_x(mt);
   pose.pose.position.y += distance * sin(yaw) + rand_y(mt);
@@ -426,7 +426,7 @@ float get_range_from_map(int angle, float ox, float oy, float yaw)
   int y0 = (index0 - x0) / map.info.width;
   int x = 0, y = 0;
   float _angle = angle*laser_data_from_scan.angle_increment - M_PI/2.0;
-  int index1 = get_index(ox + range_max * cos(yaw + _angle), oy + range_max * sin(yaw + _angle));
+  int index1 = get_index(ox + RANGE_MAX * cos(yaw + _angle), oy + RANGE_MAX * sin(yaw + _angle));
   int x1 = index1 % map.info.width;
   int y1 = (index1 - x1) / map.info.width;
   int steep;
@@ -488,7 +488,7 @@ float get_range_from_map(int angle, float ox, float oy, float yaw)
       }
     }
   }
-  return range_max;
+  return RANGE_MAX;
 }
 
 void initialize_particles(float x, float y, float yaw)
