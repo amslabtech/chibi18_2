@@ -18,6 +18,9 @@ nav_msgs::OccupancyGrid _cost_map;//for debug
 
 float MARGIN_WALL;
 float WAYPOINT_DISTANCE;
+float TOLERANCE;
+float WEIGHT_DATA;
+float WEIGHT_SMOOTH;
 
 class Cell
 {
@@ -66,8 +69,8 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
   _cost_map.info = map.info;
   _cost_map.data.resize(map.info.height*map.info.width);
 
-  int MARGIN_WALL_step = 127 / (MARGIN_WALL / map.info.resolution);
-  std::cout << "MARGIN_WALL_step:" << MARGIN_WALL_step << std::endl;
+  int MARGIN_WALL_STEP = 127 / (MARGIN_WALL / map.info.resolution);
+  std::cout << "MARGIN_WALL_STEP:" << MARGIN_WALL_STEP << std::endl;
 
   std::vector<int> wall_list;
 
@@ -89,7 +92,7 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
     if(i==wall_list.size()){
       break;
     }
-    if(cost < MARGIN_WALL_step){
+    if(cost < MARGIN_WALL_STEP){
       std::cout << "end" << cost << std::endl;
       break;
     }
@@ -98,28 +101,28 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
     if(_i-1>0){
       int index = (_i-1) + (_j) * map.info.width;
       if(cells[index].cost < cost){
-        cells[index].cost = cost - MARGIN_WALL_step;
+        cells[index].cost = cost - MARGIN_WALL_STEP;
         wall_list.push_back(index);
       }
     }
     if(_i+1<map.info.width){
       int index = (_i+1) + (_j) * map.info.width;
       if(cells[index].cost < cost){
-        cells[index].cost = cost - MARGIN_WALL_step;
+        cells[index].cost = cost - MARGIN_WALL_STEP;
         wall_list.push_back(index);
       }
     }
     if(_j-1>0){
       int index = (_i) + (_j-1) * map.info.width;
       if(cells[index].cost < cost){
-        cells[index].cost = cost - MARGIN_WALL_step;
+        cells[index].cost = cost - MARGIN_WALL_STEP;
         wall_list.push_back(index);
       }
     }
     if(_j+1<map.info.width){
       int index = (_i) + (_j+1) * map.info.width;
       if(cells[index].cost < cost){
-        cells[index].cost = cost - MARGIN_WALL_step;
+        cells[index].cost = cost - MARGIN_WALL_STEP;
         wall_list.push_back(index);
       }
     }
@@ -163,6 +166,9 @@ int main(int argc, char** argv)
   local_nh.getParam("START_Y", start.pose.position.y);
   local_nh.getParam("WAYPOINT_DISTANCE", WAYPOINT_DISTANCE);
   local_nh.getParam("MARGIN_WALL", MARGIN_WALL);
+  local_nh.getParam("TOLERANCE", TOLERANCE);
+  local_nh.getParam("WEIGHT_DATA", WEIGHT_DATA);
+  local_nh.getParam("WEIGHT_SMOOTH", WEIGHT_SMOOTH);
   //std::cout << goal.pose.position.x << " " << goal.pose.position.y<<std::endl;
   start.pose.orientation.w = 1;
   goal.pose.orientation.w = 1;
@@ -506,7 +512,7 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
       break;
     }
   }
-  //smooth(global_path);
+  smooth(global_path);
   std::cout << "global path generated!" << std::endl;
 }
 
@@ -520,22 +526,17 @@ float get_yaw(geometry_msgs::Quaternion q)
 
 void smooth(nav_msgs::Path& path)
 {
-  float tolerance = 0.001;
-  float weight_data = 0.005;
-  float weight_smooth = 0.002;
   nav_msgs::Path new_path = path;
-  float change = tolerance;
-  while((change >= tolerance) && (ros::ok())){
+  float change = TOLERANCE;
+  while((change >= TOLERANCE) && (ros::ok())){
     std::cout << "smoothing..." << std::endl;
     change = 0.0;
-    for(int i=1;i<path.poses.size();i++){
+    for(int i=1;i<path.poses.size() - 1;i++){
       float _x = new_path.poses[i].pose.position.x;
-      new_path.poses[i].pose.position.x += weight_data * (path.poses[i].pose.position.x - new_path.poses[i].pose.position.x);
-      new_path.poses[i].pose.position.x += weight_smooth * (new_path.poses[i-1].pose.position.x + new_path.poses[i+1].pose.position.x - 2.0 * new_path.poses[i].pose.position.x);
+      new_path.poses[i].pose.position.x += WEIGHT_DATA * (path.poses[i].pose.position.x - new_path.poses[i].pose.position.x) + WEIGHT_SMOOTH * (path.poses[i-1].pose.position.x + path.poses[i+1].pose.position.x - 2.0 * new_path.poses[i].pose.position.x);
       change += fabs(_x - new_path.poses[i].pose.position.x);
       float _y = new_path.poses[i].pose.position.y;
-      new_path.poses[i].pose.position.y += weight_data * (path.poses[i].pose.position.y - new_path.poses[i].pose.position.y);
-      new_path.poses[i].pose.position.y += weight_smooth * (new_path.poses[i-1].pose.position.y + new_path.poses[i+1].pose.position.y - 2.0 * new_path.poses[i].pose.position.y);
+      new_path.poses[i].pose.position.y += WEIGHT_DATA * (path.poses[i].pose.position.y - new_path.poses[i].pose.position.y) + WEIGHT_SMOOTH * (path.poses[i-1].pose.position.y + path.poses[i+1].pose.position.y - 2.0 * new_path.poses[i].pose.position.y);
       change += fabs(_y - new_path.poses[i].pose.position.y);
     }
     std::cout << "change:" << change << std::endl;

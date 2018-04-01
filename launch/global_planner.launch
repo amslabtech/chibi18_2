@@ -3,12 +3,18 @@
   <arg name="START_Y" default="0.0"/>
   <arg name="WAYPOINT_DISTANCE" default="2.0"/>
   <arg name="MARGIN_WALL" default="0.3"/>
+  <arg name="TOLERANCE" default="0.001"/>
+  <arg name="WEIGHT_DATA" default="0.5"/>
+  <arg name="WEIGHT_SMOOTH" default="0.2"/>
 
   <node pkg="chibi18_control" name="global_path_planner" type="global_path_planner">
     <param name="START_X" value="$(arg START_X)"/>
     <param name="START_Y" value="$(arg START_Y)"/>
     <param name="WAYPOINT_DISTANCE" value="$(arg WAYPOINT_DISTANCE)"/>
     <param name="MARGIN_WALL" value="$(arg MARGIN_WALL)"/>
+    <param name="TOLERANCE" value="$(arg TOLERANCE)"/>
+    <param name="WEIGHT_DATA" value="$(arg WEIGHT_DATA)"/>
+    <param name="WEIGHT_SMOOTH" value="$(arg WEIGHT_SMOOTH)"/>
   </node>
 
 </launch>
