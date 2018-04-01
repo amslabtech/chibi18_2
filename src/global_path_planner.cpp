@@ -46,6 +46,8 @@ std::vector<int> waypoint_list;
 
 int get_grid_data(float, float);
 int get_index(float, float);
+int get_i_from_x(float);
+int get_j_from_y(float);
 int get_heuristic(int, int);
 void calculate_aster(geometry_msgs::PoseStamped&, geometry_msgs::PoseStamped&);
 float get_yaw(geometry_msgs::Quaternion);
@@ -241,21 +243,19 @@ int get_grid_data(float x, float y)
 
 int get_index(float x, float y)
 {
-  /*
-  if(x > 0){
-    x = ((int)(10*(2*x)+1))/20.0;
-  }else{
-    x = ((int)(10*(2*x)))/20.0;
-  }
-  if(y > 0){
-    y = ((int)(10*(2*y)))/20.0;
-  }else{
-    y = ((int)(10*(2*y)-1))/20.0;
-  }
-  */
-  int index = int((map.info.width*(y-map.info.origin.position.y)+(x-map.info.origin.position.x))/map.info.resolution) + 1;
+  int index = map.info.width * get_j_from_y(y) + get_i_from_x(x);
   //std::cout << index << " " << x << " " << y <<std::endl;
   return index;
+}
+
+int get_i_from_x(float x)
+{
+  return floor((x - map.info.origin.position.x) / map.info.resolution + 0.5);
+}
+
+int get_j_from_y(float y)
+{
+  return floor((y - map.info.origin.position.y) / map.info.resolution + 0.5);
 }
 
 int get_heuristic(int diff_x, int diff_y)
@@ -287,17 +287,12 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
     }
   }
 
-  _start.pose.position.x = ((int)(_start.pose.position.x / map.info.resolution) * map.info.resolution);
-  _start.pose.position.y = ((int)(_start.pose.position.y / map.info.resolution) * map.info.resolution);
-  _goal.pose.position.x = ((int)(_goal.pose.position.x / map.info.resolution) * map.info.resolution);
-  _goal.pose.position.y = ((int)(_goal.pose.position.y / map.info.resolution) * map.info.resolution);
-
   int start_index = get_index(_start.pose.position.x, _start.pose.position.y);
-  int start_i = start_index % map.info.width;
-  int start_j = (start_index - start_i) / map.info.width;
+  int start_i = get_i_from_x(start.pose.position.x);
+  int start_j = get_j_from_y(start.pose.position.y);
   int goal_index = get_index(_goal.pose.position.x, _goal.pose.position.y);
-  int goal_i = goal_index % map.info.width;
-  int goal_j = (goal_index - goal_i) / map.info.width;
+  int goal_i = get_i_from_x(goal.pose.position.x);
+  int goal_j = get_j_from_y(goal.pose.position.y);
   std::cout << "calculating path" << std::endl;
   std::cout << "from " << _start.pose.position.x << ", " << _start.pose.position.y << ", " << get_yaw(_start.pose.orientation) << ", " << start_index << std::endl;
   std::cout << start_i << ", " << start_j << std::endl;

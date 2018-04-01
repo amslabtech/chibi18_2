@@ -66,6 +66,8 @@ std::mt19937 mt(rnd());
 float get_yaw(geometry_msgs::Quaternion);
 int get_grid_data(float, float);
 int get_index(float, float);
+int get_i_from_x(float);
+int get_j_from_y(float);
 float get_square(float);
 bool map_valid(int, int);
 float get_range_from_map(int, float, float, float);
@@ -338,33 +340,25 @@ float get_yaw(geometry_msgs::Quaternion q)
 
 int get_grid_data(float x, float y)
 {
-  int index = get_index(x, y);
-  if(index < 0){
-    index = 0;
-  }else if(index > map.info.width * map.info.height -1){
-    index = map.info.width * map.info.height - 1;
-  }
-  int data = map.data[index];
+  int data = map.data[get_index(x, y)];
   return data;
 }
 
 int get_index(float x, float y)
 {
-
-  if(x > 0){
-    x = ((int)(10*(2*x)+1))/20.0;
-  }else{
-    x = ((int)(10*(2*x)))/20.0;
-  }
-  if(y > 0){
-    y = ((int)(10*(2*y)))/20.0;
-  }else{
-    y = ((int)(10*(2*y)-1))/20.0;
-  }
-
-  int index = int((map.info.width*(y-map.info.origin.position.y)+(x-map.info.origin.position.x))/map.info.resolution);
+  int index = map.info.width * get_j_from_y(y) + get_i_from_x(x);
   //std::cout << index << " " << x << " " << y <<std::endl;
   return index;
+}
+
+int get_i_from_x(float x)
+{
+  return floor((x - map.info.origin.position.x) / map.info.resolution + 0.5);
+}
+
+int get_j_from_y(float y)
+{
+  return floor((y - map.info.origin.position.y) / map.info.resolution + 0.5);
 }
 
 Particle::Particle(void)
