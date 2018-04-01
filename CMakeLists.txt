@@ -13,12 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   tf
-  pcl_ros
-  cmake_modules
-  laser_geometry
 )
-find_package(PCL REQUIRED)
-find_package(Eigen REQUIRED)
 
 #find_package(roomba_500driver_meiji REQUIRED)
 ## System dependencies are found with CMake's conventions
@@ -152,6 +147,7 @@ add_executable(localizer src/localizer.cpp)
 add_executable(globalpath_O src/globalpath_O.cpp)
 add_executable(amcl_to_chibi src/amcl_to_chibi.cpp)
 add_executable(waypoint_publisher src/waypoint_publisher.cpp)
+add_executable(roomba_simulator src/roomba_simulator.cpp)
 
 
 ## Rename C++ executable without prefix
@@ -195,7 +191,9 @@ target_link_libraries(amcl_to_chibi
 target_link_libraries(waypoint_publisher
   ${catkin_LIBRARIES}
 )
-
+target_link_libraries(roomba_simulator
+  ${catkin_LIBRARIES}
+)
 #############
 ## Install ##
 #############

@@ -1,0 +1,10 @@
+<launch>
+
+  <node pkg="chibi18_control" name="roomba_simulator" type="roomba_simulator">
+
+  </node>
+
+  <node pkg="chibi18_control" name="laser_link" type="laser_link"/>
+
+
+</launch>

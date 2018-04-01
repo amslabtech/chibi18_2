@@ -1,0 +1,15 @@
+<launch>
+
+  <include file="$(find chibi18_control)/launch/sim.launch"/>
+
+  <include file="$(find chibi18_control)/launch/local_planner.launch"/>
+
+  <include file="$(find chibi18_control)/launch/localizer.launch"/>
+
+  <include file="$(find chibi18_control)/launch/global_planner.launch"/>
+
+  <include file="$(find chibi18_control)/launch/map.launch"/>
+
+  <node pkg="rviz" type="rviz" name="rviz"/>
+
+</launch>
