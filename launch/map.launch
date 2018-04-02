@@ -1,6 +1,6 @@
 <launch>
 
-  <arg name="map_file" default="$(find chibi18_control)/map/map/map3.yaml"/>
+  <arg name="map_file" default="$(find chibi18_control)/map/map/map_d1.yaml"/>
   <node pkg="map_server" type="map_server" name="map_server" args="$(arg map_file)"/>
 
 </launch>

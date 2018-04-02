@@ -14,10 +14,10 @@ int main(int argc, char** argv){
 
   ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 100);
 
-  set_pose(11.5, -0.5, 0);
-  set_pose(12, 13.5, 0);
-  set_pose(-21.5, 14.5, 0);
-  set_pose(-22, 1, 0);
+  set_pose(14.5, 0.0, -M_PI/2.0);
+  set_pose(15, -14, M_PI);
+  set_pose(-18.5, -15.0, M_PI/2.0);
+  set_pose(-20, -1, 0);
   set_pose(0, 0, 0);
 
   for(int i=0;i<wp.size();i++){

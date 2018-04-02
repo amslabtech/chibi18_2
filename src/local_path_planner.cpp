@@ -313,7 +313,7 @@ float calcurate_distance(float v, float omega, geometry_msgs::Pose& pose)
   int index = 0;
 
   float distance = LIMIT_DISTANCE;
-  for(int i=20;i<=700;i+=20){//5~175
+  for(int i=20;i<=700;i+=8){//5~175
     if(_laser_data.ranges[i] < LIMIT_DISTANCE){
       object.x = _laser_data.ranges[i] * sin(LASER_RESOLUTION * i);
       object.y = _laser_data.ranges[i] * cos(LASER_RESOLUTION * i) * -1.0;
