@@ -541,4 +541,5 @@ void smooth(nav_msgs::Path& path)
     }
     std::cout << "change:" << change << std::endl;
   }
+  path = new_path;
 }
