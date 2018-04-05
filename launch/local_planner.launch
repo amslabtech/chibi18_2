@@ -4,6 +4,7 @@
   <arg name="BETA" default="10.00"/>
   <arg name="GAMMA" default="0.00"/>
   <arg name="MAX_VELOCITY" default="0.50"/>
+  <arg name="MIN_VELOCITY" default="0.0"/>
   <arg name="MAX_ANGULAR_VELOCITY" default="1.00"/>
   <arg name="MAX_ACCELERATION" default="2.0"/>
   <arg name="MAX_ANGULAR_ACCELERATION" default="6.0"/>
@@ -21,6 +22,7 @@
     <param name="BETA" value="$(arg BETA)"/>
     <param name="GAMMA" value="$(arg GAMMA)"/>
     <param name="MAX_VELOCITY" value="$(arg MAX_VELOCITY)"/>
+    <param name="MIN_VELOCITY" value="$(arg MIN_VELOCITY)"/>
     <param name="MAX_ANGULAR_VELOCITY" value="$(arg MAX_ANGULAR_VELOCITY)"/>
     <param name="MAX_ACCELERATION" value="$(arg MAX_ACCELERATION)"/>
     <param name="MAX_ANGULAR_ACCELERATION" value="$(arg MAX_ANGULAR_ACCELERATION)"/>

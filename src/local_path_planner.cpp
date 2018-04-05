@@ -14,6 +14,7 @@
 
 //物理量に修正すること
 float MAX_VELOCITY;
+float MIN_VELOCITY;
 float MAX_ANGULAR_VELOCITY;
 float MAX_ACCELERATION;
 float MAX_ANGULAR_ACCELERATION;
@@ -89,6 +90,7 @@ int main(int argc, char** argv)
     local_nh.getParam("BETA", BETA);
     local_nh.getParam("GAMMA", GAMMA);
     local_nh.getParam("MAX_VELOCITY", MAX_VELOCITY);
+    local_nh.getParam("MIN_VELOCITY", MIN_VELOCITY);
     local_nh.getParam("MAX_ANGULAR_VELOCITY", MAX_ANGULAR_VELOCITY);
     local_nh.getParam("MAX_ACCELERATION", MAX_ACCELERATION);
     local_nh.getParam("MAX_ANGULAR_ACCELERATION", MAX_ANGULAR_ACCELERATION);
@@ -350,7 +352,7 @@ void calcurate_dynamic_window(void)
   window_left = get_larger(-MAX_ANGULAR_VELOCITY, velocity_odometry.angular.z-MAX_ANGULAR_ACCELERATION*INTERVAL);
   window_up = get_smaller(MAX_VELOCITY, velocity_odometry.linear.x+MAX_ACCELERATION*INTERVAL);
   window_right = get_smaller(MAX_ANGULAR_VELOCITY, velocity_odometry.angular.z+MAX_ANGULAR_ACCELERATION*INTERVAL);
-  window_down = get_larger(0, velocity_odometry.linear.x-MAX_ACCELERATION*INTERVAL);
+  window_down = get_larger(MIN_VELOCITY, velocity_odometry.linear.x-MAX_ACCELERATION*INTERVAL);
 
   if(window_left > window_right){
     window_left = -MAX_ANGULAR_VELOCITY;
@@ -358,7 +360,7 @@ void calcurate_dynamic_window(void)
   }
   if(window_down > window_up){
     window_up = MAX_VELOCITY;
-    window_down = 0;
+    window_down = MIN_VELOCITY;
   }
 }
 
