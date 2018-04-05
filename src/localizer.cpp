@@ -14,12 +14,12 @@ class Particle
 public:
   Particle(void);
 
-  void initialize(int, int, float, geometry_msgs::Pose, int, float, float, float);
-  void move(float, float, float);//"odom"から見た"base_link"の動き
+  void initialize(int, int, double, geometry_msgs::Pose, int, double, double, double);
+  void move(double, double, double);//"odom"から見た"base_link"の動き
   void initialize_map(void);
 
   geometry_msgs::PoseStamped pose;
-  float likelihood;
+  double likelihood;
 
 private:
 
@@ -27,23 +27,23 @@ private:
 
 //パラメータ
 int N;//number of partcles
-float POSITION_SIGMA;
-float ORIENTATION_SIGMA;
-float INIT_X_COV;
-float INIT_Y_COV;
-float INIT_YAW_COV;
-float INIT_X;
-float INIT_Y;
-float INIT_YAW;
-float ODOM_YAW_NOISE;
-float ODOM_X_NOISE;
-float ODOM_Y_NOISE;
-float RANGE_MAX;
+double POSITION_SIGMA;
+double ORIENTATION_SIGMA;
+double INIT_X_COV;
+double INIT_Y_COV;
+double INIT_YAW_COV;
+double INIT_X;
+double INIT_Y;
+double INIT_YAW;
+double ODOM_YAW_NOISE;
+double ODOM_X_NOISE;
+double ODOM_Y_NOISE;
+double RANGE_MAX;
 int MATCHING_STEP;
-float UPDATE_DISTANCE;
-float UPDATE_ANGLE;
-float ALPHA_SLOW;
-float ALPHA_FAST;
+double UPDATE_DISTANCE;
+double UPDATE_ANGLE;
+double ALPHA_SLOW;
+double ALPHA_FAST;
 nav_msgs::OccupancyGrid map;
 bool map_subscribed = false;
 std::vector<Particle>  particles;
@@ -53,28 +53,28 @@ tf::StampedTransform previous_base_link_pose;
 sensor_msgs::LaserScan laser_data_from_scan;
 geometry_msgs::PoseWithCovarianceStamped estimated_pose;
 bool calculate_flag = true;
-float distance_sum = 0;
-float angle_sum = 0;
+double distance_sum = 0;
+double angle_sum = 0;
 
-float w_slow = 0;
-float w_fast = 0;
+double w_slow = 0;
+double w_fast = 0;
 
 //パーティクル配置用
 std::random_device rnd;
 std::mt19937 mt(rnd());
 
-float get_yaw(geometry_msgs::Quaternion);
-int get_grid_data(float, float);
-int get_index(float, float);
-int get_i_from_x(float);
-int get_j_from_y(float);
-float get_square(float);
+double get_yaw(geometry_msgs::Quaternion);
+int get_grid_data(double, double);
+int get_index(double, double);
+int get_i_from_x(double);
+int get_j_from_y(double);
+double get_square(double);
 bool map_valid(int, int);
-float get_range_from_map(int, float, float, float);
-void initialize_particles(float, float, float);
+double get_range_from_map(int, double, double, double);
+void initialize_particles(double, double, double);
 void initialize_particles_map(void);
 void calculate_covariance(void);
-float get_larger(float, float);
+double get_larger(double, double);
 
 void laser_callback(const sensor_msgs::LaserScanConstPtr& msg)
 {
@@ -162,9 +162,9 @@ int main(int argc, char** argv)
       ros::Time begin = ros::Time::now();
       if(map_subscribed && !laser_data_from_scan.ranges.empty()){
         //prediction
-        float dx = 0.0;
-        float dy = 0.0;
-        float dtheta = 0.0;
+        double dx = 0.0;
+        double dy = 0.0;
+        double dtheta = 0.0;
         geometry_msgs::Quaternion qc, qp;
         try{
           //std::cout << "lookup transform odom to base_link" << std::endl;
@@ -199,12 +199,12 @@ int main(int argc, char** argv)
           laser_data_from_map = laser_data_from_scan;
           laser_data_from_map.header.frame_id = "map";
           for(int i=0;i<N;i++){
-            float p_yaw = get_yaw(particles[i].pose.pose.orientation);
+            double p_yaw = get_yaw(particles[i].pose.pose.orientation);
             for(int angle=0;angle<720;angle+=MATCHING_STEP){
               laser_data_from_map.ranges[angle] = get_range_from_map(angle, particles[i].pose.pose.position.x, particles[i].pose.pose.position.y, p_yaw);
             }
             //laser_pub.publish(laser_data_from_map);
-            float rss = 0;//残差平方和
+            double rss = 0;//残差平方和
             for(int angle=0;angle<720;angle+=MATCHING_STEP){
               rss += get_square(laser_data_from_map.ranges[angle] - laser_data_from_scan.ranges[angle]);
             }
@@ -212,21 +212,21 @@ int main(int argc, char** argv)
 
             //std::cout << rss << ", " << particles[i].likelihood << std::endl;
           }
-          float sum = 0;
+          double sum = 0;
           for(int i=0;i<N;i++){
             sum += particles[i].likelihood;
           }
           int max_index = 0;
-          float w_average = 0;
+          double w_average = 0;
           for(int i=0;i<N;i++){
-            w_average += particles[i].likelihood / (float)N;
+            w_average += particles[i].likelihood / (double)N;
             particles[i].likelihood /= sum;
             if(particles[i].likelihood > particles[max_index].likelihood){
               max_index = i;
             }
           }
           if(std::isnan(w_average) || w_average == 0.0){
-            w_average = 1.0 / (float)N;
+            w_average = 1.0 / (double)N;
             w_slow = w_fast = w_average;
           }
           if(w_slow == 0.0){
@@ -241,7 +241,7 @@ int main(int argc, char** argv)
           }
           std::cout << "w_slow:" << w_slow << ", w_fast:" << w_fast << ", w_ave:" << w_average << std::endl;
           /*
-          float ess = 0;//有効サンプルサイズ
+          double ess = 0;//有効サンプルサイズ
           for(int i=0;i<N;i++){
             ess += 1 / get_square(particles[i].likelihood);
           }
@@ -252,11 +252,11 @@ int main(int argc, char** argv)
           std::cout << "resampling" << std::endl;
           std::vector<Particle> new_particles;
           std::uniform_int_distribution<int> rand_n(0, N);
-          float beta = 0;
+          double beta = 0;
           int index = rand_n(mt);
           int random_count = 0;//for debug
           for(int i=0;i<N;i++){
-            float random = rand_n(mt) / (float)N;
+            double random = rand_n(mt) / (double)N;
             if(get_larger(0.0, 1.0 - w_fast / w_slow) > random){
               //std::cout << "add random particle" << std::endl;
               random_count++;
@@ -264,7 +264,7 @@ int main(int argc, char** argv)
               p.initialize(map.info.width, map.info.height, map.info.resolution, map.info.origin, N, estimated_pose.pose.pose.position.x, estimated_pose.pose.pose.position.y, get_yaw(estimated_pose.pose.pose.orientation));
               new_particles.push_back(p);
             }else{
-              beta += (rand_n(mt)) / (float)N * 2 * particles[max_index].likelihood;
+              beta += (rand_n(mt)) / (double)N * 2 * particles[max_index].likelihood;
               while(beta > particles[index].likelihood){
                 beta -= particles[index].likelihood;
                 index = (1 + index) % N;
@@ -330,7 +330,7 @@ int main(int argc, char** argv)
     return 0;
 }
 
-float get_yaw(geometry_msgs::Quaternion q)
+double get_yaw(geometry_msgs::Quaternion q)
 {
   double r, p, y;
   tf::Quaternion quat(q.x, q.y, q.z, q.w);
@@ -338,25 +338,25 @@ float get_yaw(geometry_msgs::Quaternion q)
   return y;
 }
 
-int get_grid_data(float x, float y)
+int get_grid_data(double x, double y)
 {
   int data = map.data[get_index(x, y)];
   return data;
 }
 
-int get_index(float x, float y)
+int get_index(double x, double y)
 {
   int index = map.info.width * get_j_from_y(y) + get_i_from_x(x);
   //std::cout << index << " " << x << " " << y <<std::endl;
   return index;
 }
 
-int get_i_from_x(float x)
+int get_i_from_x(double x)
 {
   return floor((x - map.info.origin.position.x) / map.info.resolution + 0.5);
 }
 
-int get_j_from_y(float y)
+int get_j_from_y(double y)
 {
   return floor((y - map.info.origin.position.y) / map.info.resolution + 0.5);
 }
@@ -369,7 +369,7 @@ Particle::Particle(void)
   quaternionTFToMsg(tf::createQuaternionFromYaw(0), pose.pose.orientation);
 }
 
-void Particle::initialize(int width, int height, float resolution, geometry_msgs::Pose origin, int N, float x, float y, float yaw)
+void Particle::initialize(int width, int height, double resolution, geometry_msgs::Pose origin, int N, double x, double y, double yaw)
 {
   std::normal_distribution<> rand_x(x, INIT_X_COV);
   pose.pose.position.x = rand_x(mt);
@@ -377,7 +377,7 @@ void Particle::initialize(int width, int height, float resolution, geometry_msgs
   pose.pose.position.y = rand_y(mt);
   std::normal_distribution<> rand_yaw(yaw, INIT_YAW_COV);
   quaternionTFToMsg(tf::createQuaternionFromYaw(rand_yaw(mt)), pose.pose.orientation);
-  likelihood = 1.0 / (float)N;
+  likelihood = 1.0 / (double)N;
 }
 
 void Particle::initialize_map(void)
@@ -387,22 +387,22 @@ void Particle::initialize_map(void)
   pose.pose.position.y = dist(mt) * map.info.resolution + map.info.origin.position.y;
   std::uniform_int_distribution<int> dist_yaw(0, 360);
   quaternionTFToMsg(tf::createQuaternionFromYaw(dist_yaw(mt) / 180.0 * M_PI), pose.pose.orientation);
-  likelihood = 1.0 / (float)N;
+  likelihood = 1.0 / (double)N;
 }
 
-void Particle::move(float dx, float dy, float dtheta)
+void Particle::move(double dx, double dy, double dtheta)
 {
-  float yaw = get_yaw(pose.pose.orientation);
+  double yaw = get_yaw(pose.pose.orientation);
   std::normal_distribution<> rand_x(0, ODOM_X_NOISE);
   std::normal_distribution<> rand_y(0, ODOM_Y_NOISE);
   std::normal_distribution<> rand_yaw(0, ODOM_YAW_NOISE);
-  float distance = sqrt(dx * dx + dy * dy);
+  double distance = sqrt(dx * dx + dy * dy);
   pose.pose.position.x += distance * cos(yaw) + rand_x(mt);
   pose.pose.position.y += distance * sin(yaw) + rand_y(mt);
   quaternionTFToMsg(tf::createQuaternionFromYaw(yaw + dtheta + rand_yaw(mt)), pose.pose.orientation);
 }
 
-float get_square(float value)
+double get_square(double value)
 {
   return value * value;
 }
@@ -413,13 +413,13 @@ bool map_valid(int i, int j)
 }
 
 
-float get_range_from_map(int angle, float ox, float oy, float yaw)
+double get_range_from_map(int angle, double ox, double oy, double yaw)
 {
   int index0 = get_index(ox, oy);
   int x0 = index0 % map.info.width;
   int y0 = (index0 - x0) / map.info.width;
   int x = 0, y = 0;
-  float _angle = angle*laser_data_from_scan.angle_increment - M_PI/2.0;
+  double _angle = angle*laser_data_from_scan.angle_increment - M_PI/2.0;
   int index1 = get_index(ox + RANGE_MAX * cos(yaw + _angle), oy + RANGE_MAX * sin(yaw + _angle));
   int x1 = index1 % map.info.width;
   int y1 = (index1 - x1) / map.info.width;
@@ -485,7 +485,7 @@ float get_range_from_map(int angle, float ox, float oy, float yaw)
   return RANGE_MAX;
 }
 
-void initialize_particles(float x, float y, float yaw)
+void initialize_particles(double x, double y, double yaw)
 {
   particles.clear();
   poses.poses.clear();
@@ -518,9 +518,9 @@ void initialize_particles_map(void)
 
 void calculate_covariance(void)
 {
-  float mean_x = 0;
-  float mean_y = 0;
-  float mean_yaw = 0;
+  double mean_x = 0;
+  double mean_y = 0;
+  double mean_yaw = 0;
   for(int i=0;i<estimated_pose.pose.covariance.size();i++){
     estimated_pose.pose.covariance[i] = 0;
   }
@@ -529,13 +529,13 @@ void calculate_covariance(void)
     mean_y = particles[i].pose.pose.position.y;
     mean_yaw = get_yaw(particles[i].pose.pose.orientation);
   }
-  mean_x /= (float)N;
-  mean_y /= (float)N;
-  mean_yaw /= (float)N;
+  mean_x /= (double)N;
+  mean_y /= (double)N;
+  mean_yaw /= (double)N;
   for(int i=0;i<N;i++){
-    float _x = particles[i].pose.pose.position.x - mean_x;
-    float _y = particles[i].pose.pose.position.y - mean_y;
-    float _yaw = get_yaw(particles[i].pose.pose.orientation) - mean_yaw;
+    double _x = particles[i].pose.pose.position.x - mean_x;
+    double _y = particles[i].pose.pose.position.y - mean_y;
+    double _yaw = get_yaw(particles[i].pose.pose.orientation) - mean_yaw;
     estimated_pose.pose.covariance[0] += _x * _x;
     estimated_pose.pose.covariance[1] += _x * _y;
     estimated_pose.pose.covariance[5] += _x * _yaw;
@@ -543,18 +543,18 @@ void calculate_covariance(void)
     estimated_pose.pose.covariance[11] += _y * _yaw;
     estimated_pose.pose.covariance[35] += _yaw * _yaw;
   }
-  estimated_pose.pose.covariance[0] /= (float)N;
-  estimated_pose.pose.covariance[1] /= (float)N;
-  estimated_pose.pose.covariance[5] /= (float)N;
-  estimated_pose.pose.covariance[7] /= (float)N;
-  estimated_pose.pose.covariance[11] /= (float)N;
-  estimated_pose.pose.covariance[35] /= (float)N;
+  estimated_pose.pose.covariance[0] /= (double)N;
+  estimated_pose.pose.covariance[1] /= (double)N;
+  estimated_pose.pose.covariance[5] /= (double)N;
+  estimated_pose.pose.covariance[7] /= (double)N;
+  estimated_pose.pose.covariance[11] /= (double)N;
+  estimated_pose.pose.covariance[35] /= (double)N;
   estimated_pose.pose.covariance[6] = estimated_pose.pose.covariance[1];
   estimated_pose.pose.covariance[30] = estimated_pose.pose.covariance[5];
   estimated_pose.pose.covariance[31] = estimated_pose.pose.covariance[11];
 }
 
-float get_larger(float a, float b)
+double get_larger(double a, double b)
 {
   if(a >= b){
     return a;

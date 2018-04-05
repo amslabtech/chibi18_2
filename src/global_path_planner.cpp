@@ -17,11 +17,11 @@ geometry_msgs::PoseWithCovarianceStamped estimated_pose;
 
 std::vector<int> waypoint_list;
 
-float MARGIN_WALL;
-float WAYPOINT_DISTANCE;
-float TOLERANCE;
-float WEIGHT_DATA;
-float WEIGHT_SMOOTH;
+double MARGIN_WALL;
+double WAYPOINT_DISTANCE;
+double TOLERANCE;
+double WEIGHT_DATA;
+double WEIGHT_SMOOTH;
 
 class Cell
 {
@@ -74,11 +74,11 @@ private:
 
 };
 
-int get_grid_data(float, float);
-int get_index(float, float);
-int get_i_from_x(float);
-int get_j_from_y(float);
-float get_yaw(geometry_msgs::Quaternion);
+int get_grid_data(double, double);
+int get_index(double, double);
+int get_i_from_x(double);
+int get_j_from_y(double);
+double get_yaw(geometry_msgs::Quaternion);
 
 bool first_aster = true;
 bool pose_subscribed = false;
@@ -228,30 +228,30 @@ int main(int argc, char** argv)
   return 0;
 }
 
-int get_grid_data(float x, float y)
+int get_grid_data(double x, double y)
 {
   int data = map.data[get_index(x, y)];
   return data;
 }
 
-int get_index(float x, float y)
+int get_index(double x, double y)
 {
   int index = map.info.width * get_j_from_y(y) + get_i_from_x(x);
   //std::cout << index << " " << x << " " << y <<std::endl;
   return index;
 }
 
-int get_i_from_x(float x)
+int get_i_from_x(double x)
 {
   return floor((x - map.info.origin.position.x) / map.info.resolution + 0.5);
 }
 
-int get_j_from_y(float y)
+int get_j_from_y(double y)
 {
   return floor((y - map.info.origin.position.y) / map.info.resolution + 0.5);
 }
 
-float get_yaw(geometry_msgs::Quaternion q)
+double get_yaw(geometry_msgs::Quaternion q)
 {
   double r, p, y;
   tf::Quaternion quat(q.x, q.y, q.z, q.w);
@@ -535,15 +535,15 @@ void GlobalPathPlanner::calculate_aster(geometry_msgs::PoseStamped& _start, geom
 void GlobalPathPlanner::smooth(nav_msgs::Path& path)
 {
   nav_msgs::Path new_path = path;
-  float change = TOLERANCE;
+  double change = TOLERANCE;
   while((change >= TOLERANCE) && (ros::ok())){
     std::cout << "smoothing..." << std::endl;
     change = 0.0;
     for(int i=1;i<path.poses.size() - 1;i++){
-      float _x = new_path.poses[i].pose.position.x;
+      double _x = new_path.poses[i].pose.position.x;
       new_path.poses[i].pose.position.x += WEIGHT_DATA * (path.poses[i].pose.position.x - new_path.poses[i].pose.position.x) + WEIGHT_SMOOTH * (path.poses[i-1].pose.position.x + path.poses[i+1].pose.position.x - 2.0 * new_path.poses[i].pose.position.x);
       change += fabs(_x - new_path.poses[i].pose.position.x);
-      float _y = new_path.poses[i].pose.position.y;
+      double _y = new_path.poses[i].pose.position.y;
       new_path.poses[i].pose.position.y += WEIGHT_DATA * (path.poses[i].pose.position.y - new_path.poses[i].pose.position.y) + WEIGHT_SMOOTH * (path.poses[i-1].pose.position.y + path.poses[i+1].pose.position.y - 2.0 * new_path.poses[i].pose.position.y);
       change += fabs(_y - new_path.poses[i].pose.position.y);
     }
@@ -566,12 +566,12 @@ void GlobalPathPlanner::publish_local_goal(void)
   if(pose_subscribed){
     while((it != global_path.poses.begin()) && (it != global_path.poses.end())){
       //std::cout << global_path.poses.size() << std::endl;
-      float error = pow(it->pose.position.x - estimated_pose.pose.pose.position.x, 2) + pow(it->pose.position.y - estimated_pose.pose.pose.position.y, 2);
+      double error = pow(it->pose.position.x - estimated_pose.pose.pose.position.x, 2) + pow(it->pose.position.y - estimated_pose.pose.pose.position.y, 2);
       if(error < 0){
         std::cout << "pow error" << std::endl;
         break;
       }
-      float distance = sqrt(error);
+      double distance = sqrt(error);
       //std::cout << "d=" << distance << "[m]" << std::endl;
       if(WAYPOINT_DISTANCE > distance){
         target_pub.publish(*it);
