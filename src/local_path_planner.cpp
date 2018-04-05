@@ -49,7 +49,7 @@ sensor_msgs::LaserScan laser_data;
 sensor_msgs::LaserScan _laser_data;//計算用
 bool odometry_subscribed = false;
 bool target_subscribed = false;
-bool move_allowed = true;
+bool move_allowed = false;
 
 geometry_msgs::PoseArray poses;
 
@@ -187,6 +187,10 @@ int main(int argc, char** argv)
           }
         }
 
+        if(!move_allowed){
+          velocity.twist.linear.x = 0.0;
+          velocity.twist.angular.z = 0.0;
+        }
         std::cout << "order" << std::endl;
         std::cout << velocity.twist.linear.x << "[m/s], " << velocity.twist.angular.z << "[rad/s]" << std::endl;
         std::cout << "(" << current_odometry.pose.pose.position.x << ", " << current_odometry.pose.pose.position.y << ", " << get_yaw(current_odometry.pose.pose.orientation) << ")" << std::endl;
