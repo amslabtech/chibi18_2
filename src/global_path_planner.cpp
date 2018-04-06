@@ -5,6 +5,7 @@
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <std_msgs/Bool.h>
 
 geometry_msgs::PoseStamped start;
 geometry_msgs::PoseStamped goal;
@@ -14,13 +15,13 @@ nav_msgs::Path global_path;
 
 geometry_msgs::PoseWithCovarianceStamped estimated_pose;
 
-nav_msgs::OccupancyGrid _cost_map;//for debug
+std::vector<int> waypoint_list;
 
-float MARGIN_WALL;
-float WAYPOINT_DISTANCE;
-float TOLERANCE;
-float WEIGHT_DATA;
-float WEIGHT_SMOOTH;
+double MARGIN_WALL;
+double WAYPOINT_DISTANCE;
+double TOLERANCE;
+double WEIGHT_DATA;
+double WEIGHT_SMOOTH;
 
 class Cell
 {
@@ -41,33 +42,55 @@ public:
   bool is_wall;
 };
 
-std::vector<Cell> cells;
-std::vector<int> open_list;
-std::vector<int> close_list;
-std::vector<int> waypoint_list;
+class GlobalPathPlanner
+{
+public:
+  GlobalPathPlanner(void);
 
+  void calculate_aster(geometry_msgs::PoseStamped&, geometry_msgs::PoseStamped&);
+  void publish_local_goal();
+  void smooth(nav_msgs::Path&);
+  int get_heuristic(int, int);
+  void calculate_cost_map(void);
+  void map_callback(const nav_msgs::OccupancyGridConstPtr&);
+  void goal_callback(const geometry_msgs::PoseStampedConstPtr&);
+  void pose_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr&);
+  void init_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr&);
 
-int get_grid_data(float, float);
-int get_index(float, float);
-int get_i_from_x(float);
-int get_j_from_y(float);
-int get_heuristic(int, int);
-void calculate_aster(geometry_msgs::PoseStamped&, geometry_msgs::PoseStamped&);
-float get_yaw(geometry_msgs::Quaternion);
-void smooth(nav_msgs::Path&);
+private:
+  ros::NodeHandle nh;
+  ros::Publisher cost_pub;
+  ros::Publisher target_pub;
+  ros::Publisher stop_pub;
+  ros::Subscriber map_sub;
+  ros::Subscriber goal_sub;
+  ros::Subscriber pose_sub;
+  ros::Subscriber init_sub;
+
+  nav_msgs::OccupancyGrid cost_map;
+  std::vector<Cell> cells;
+  std::vector<int> open_list;
+  std::vector<int> close_list;
+
+};
+
+int get_grid_data(double, double);
+int get_index(double, double);
+int get_i_from_x(double);
+int get_j_from_y(double);
+double get_yaw(geometry_msgs::Quaternion);
 
 bool first_aster = true;
 bool pose_subscribed = false;
 bool global_path_updated = false;
 
-void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
+void GlobalPathPlanner::map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   map = *msg;
   std::cout << map.data.size() << std::endl;
-
-  _cost_map.header = map.header;
-  _cost_map.info = map.info;
-  _cost_map.data.resize(map.info.height*map.info.width);
+  cost_map.header = map.header;
+  cost_map.info = map.info;
+  cost_map.data.resize(map.info.height*map.info.width);
 
   int MARGIN_WALL_STEP = 127 / (MARGIN_WALL / map.info.resolution);
   std::cout << "MARGIN_WALL_STEP:" << MARGIN_WALL_STEP << std::endl;
@@ -81,7 +104,7 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
     cells[i].parent_index = -1;
     if(cells[i].is_wall){
       wall_list.push_back(i);
-      _cost_map.data[i] = 254;
+      cost_map.data[i] = 254;
       cells[i].cost = 254;
     }
   }
@@ -128,10 +151,14 @@ void map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
     }
     i++;
   }
+  std::cout << "calculate costmap" << std::endl;
+  if(!map.data.empty()){
+    calculate_cost_map();
+  }
   std::cout << "map callback end" << std::endl;
 }
 
-void goal_callback(const geometry_msgs::PoseStampedConstPtr& msg)
+void GlobalPathPlanner::goal_callback(const geometry_msgs::PoseStampedConstPtr& msg)
 {
   if(!first_aster){
     start = goal;
@@ -143,13 +170,13 @@ void goal_callback(const geometry_msgs::PoseStampedConstPtr& msg)
   calculate_aster(start, goal);
 }
 
-void pose_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
+void GlobalPathPlanner::pose_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
 {
   estimated_pose = *msg;
   pose_subscribed = true;
 }
 
-void init_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
+void GlobalPathPlanner::init_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
 {
   start.pose = msg->pose.pose;
   first_aster = true;
@@ -176,62 +203,24 @@ int main(int argc, char** argv)
   start.header.frame_id = "map";
   goal.header.frame_id = "map";
 
-  ros::Subscriber map_sub = nh.subscribe("/map", 100, map_callback);
-
   ros::Publisher path_pub = nh.advertise<nav_msgs::Path>("/chibi18/global_path", 100, true);
-
-  ros::Publisher cost_pub = nh.advertise<nav_msgs::OccupancyGrid>("/chibi18/cost_map", 100);
-
-  ros::Subscriber goal_sub = nh.subscribe("/move_base_simple/goal", 100, goal_callback);
-
-  ros::Publisher target_pub = nh.advertise<geometry_msgs::PoseStamped>("/chibi18/target", 100, true);
-
-  ros::Subscriber pose_sub = nh.subscribe("/chibi18/estimated_pose", 100, pose_callback);
-
-  ros::Subscriber init_sub = nh.subscribe("/initialpose", 100, init_callback);
 
   tf::TransformListener listener;
 
   ros::Rate loop_rate(10);
 
+  GlobalPathPlanner global_path_planner;
+
   global_path.header.frame_id = "map";
 
-
   while(ros::ok()){
-    int navigation_index = 0;
-    if(!map.data.empty()){
-      for(int i=0;i<_cost_map.data.size();i++){
-        _cost_map.data[i] = cells[i].cost;
-      }
-      cost_pub.publish(_cost_map);
-
-    }
     if(!global_path.poses.empty() && !waypoint_list.empty()){
-      std::vector<geometry_msgs::PoseStamped>::iterator it = global_path.poses.begin() + waypoint_list[0];
+      global_path_planner.publish_local_goal();
       if(global_path_updated){
         path_pub.publish(global_path);
         global_path_updated = false;
       }
-      if(pose_subscribed){
-        while((it != global_path.poses.begin()) && (it != global_path.poses.end())){
-          std::cout << global_path.poses.size() << std::endl;
-          float error = pow(it->pose.position.x - estimated_pose.pose.pose.position.x, 2) + pow(it->pose.position.y - estimated_pose.pose.pose.position.y, 2);
-          if(error < 0){
-            std::cout << "pow error" << std::endl;
-            break;
-          }
-          float distance = sqrt(error);
-          std::cout << "d=" << distance << "[m]" << std::endl;
-          if(WAYPOINT_DISTANCE > distance){
-            target_pub.publish(*it);
-            if(distance < WAYPOINT_DISTANCE / 2.0){
-              waypoint_list.erase(waypoint_list.begin());
-            }
-            break;
-          }
-          --it;
-        }
-      }
+
     }
     ros::spinOnce();
     loop_rate.sleep();
@@ -239,30 +228,49 @@ int main(int argc, char** argv)
   return 0;
 }
 
-int get_grid_data(float x, float y)
+int get_grid_data(double x, double y)
 {
   int data = map.data[get_index(x, y)];
   return data;
 }
 
-int get_index(float x, float y)
+int get_index(double x, double y)
 {
   int index = map.info.width * get_j_from_y(y) + get_i_from_x(x);
   //std::cout << index << " " << x << " " << y <<std::endl;
   return index;
 }
 
-int get_i_from_x(float x)
+int get_i_from_x(double x)
 {
   return floor((x - map.info.origin.position.x) / map.info.resolution + 0.5);
 }
 
-int get_j_from_y(float y)
+int get_j_from_y(double y)
 {
   return floor((y - map.info.origin.position.y) / map.info.resolution + 0.5);
 }
 
-int get_heuristic(int diff_x, int diff_y)
+double get_yaw(geometry_msgs::Quaternion q)
+{
+  double r, p, y;
+  tf::Quaternion quat(q.x, q.y, q.z, q.w);
+  tf::Matrix3x3(quat).getRPY(r, p, y);
+  return y;
+}
+
+GlobalPathPlanner::GlobalPathPlanner(void)
+{
+  map_sub = nh.subscribe("/map", 100, &GlobalPathPlanner::map_callback, this);
+  goal_sub = nh.subscribe("/move_base_simple/goal", 100, &GlobalPathPlanner::goal_callback, this);
+  pose_sub = nh.subscribe("/chibi18/estimated_pose", 100, &GlobalPathPlanner::pose_callback, this);
+  init_sub = nh.subscribe("/initialpose", 100, &GlobalPathPlanner::init_callback, this);
+  target_pub = nh.advertise<geometry_msgs::PoseStamped>("/chibi18/target", 100, true);
+  cost_pub = nh.advertise<nav_msgs::OccupancyGrid>("/chibi18/cost_map", 100);
+  stop_pub = nh.advertise<std_msgs::Bool>("/chibi18/stop", 100);
+}
+
+int GlobalPathPlanner::get_heuristic(int diff_x, int diff_y)
 {
   /*
   diff_x = abs(diff_x);
@@ -277,8 +285,12 @@ int get_heuristic(int diff_x, int diff_y)
   return sqrt(diff_x*diff_x + diff_y*diff_y);
 }
 
-void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStamped& _goal)
+void GlobalPathPlanner::calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStamped& _goal)
 {
+  std_msgs::Bool permission;
+  permission.data = false;
+  stop_pub.publish(permission);
+
   global_path_updated = true;
   //cells.clear();
   open_list.clear();
@@ -513,29 +525,25 @@ void calculate_aster(geometry_msgs::PoseStamped& _start, geometry_msgs::PoseStam
     }
   }
   smooth(global_path);
+
+  permission.data = true;
+  stop_pub.publish(permission);
+
   std::cout << "global path generated!" << std::endl;
 }
 
-float get_yaw(geometry_msgs::Quaternion q)
-{
-  double r, p, y;
-  tf::Quaternion quat(q.x, q.y, q.z, q.w);
-  tf::Matrix3x3(quat).getRPY(r, p, y);
-  return y;
-}
-
-void smooth(nav_msgs::Path& path)
+void GlobalPathPlanner::smooth(nav_msgs::Path& path)
 {
   nav_msgs::Path new_path = path;
-  float change = TOLERANCE;
+  double change = TOLERANCE;
   while((change >= TOLERANCE) && (ros::ok())){
     std::cout << "smoothing..." << std::endl;
     change = 0.0;
     for(int i=1;i<path.poses.size() - 1;i++){
-      float _x = new_path.poses[i].pose.position.x;
+      double _x = new_path.poses[i].pose.position.x;
       new_path.poses[i].pose.position.x += WEIGHT_DATA * (path.poses[i].pose.position.x - new_path.poses[i].pose.position.x) + WEIGHT_SMOOTH * (path.poses[i-1].pose.position.x + path.poses[i+1].pose.position.x - 2.0 * new_path.poses[i].pose.position.x);
       change += fabs(_x - new_path.poses[i].pose.position.x);
-      float _y = new_path.poses[i].pose.position.y;
+      double _y = new_path.poses[i].pose.position.y;
       new_path.poses[i].pose.position.y += WEIGHT_DATA * (path.poses[i].pose.position.y - new_path.poses[i].pose.position.y) + WEIGHT_SMOOTH * (path.poses[i-1].pose.position.y + path.poses[i+1].pose.position.y - 2.0 * new_path.poses[i].pose.position.y);
       change += fabs(_y - new_path.poses[i].pose.position.y);
     }
@@ -543,3 +551,37 @@ void smooth(nav_msgs::Path& path)
   }
   path = new_path;
 }
+
+void GlobalPathPlanner::calculate_cost_map(void)
+{
+  for(int i=0;i<cost_map.data.size();i++){
+   cost_map.data[i] = cells[i].cost;
+  }
+  cost_pub.publish(cost_map);
+}
+
+void GlobalPathPlanner::publish_local_goal(void)
+{
+  std::vector<geometry_msgs::PoseStamped>::iterator it = global_path.poses.begin() + waypoint_list[0];
+  if(pose_subscribed){
+    while((it != global_path.poses.begin()) && (it != global_path.poses.end())){
+      //std::cout << global_path.poses.size() << std::endl;
+      double error = pow(it->pose.position.x - estimated_pose.pose.pose.position.x, 2) + pow(it->pose.position.y - estimated_pose.pose.pose.position.y, 2);
+      if(error < 0){
+        std::cout << "pow error" << std::endl;
+        break;
+      }
+      double distance = sqrt(error);
+      //std::cout << "d=" << distance << "[m]" << std::endl;
+      if(WAYPOINT_DISTANCE > distance){
+        target_pub.publish(*it);
+        if(distance < WAYPOINT_DISTANCE / 2.0){
+          waypoint_list.erase(waypoint_list.begin());
+        }
+        break;
+      }
+    --it;
+    }
+  }
+}
+

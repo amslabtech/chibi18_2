@@ -13,31 +13,32 @@
 #include <geometry_msgs/PoseArray.h>
 
 //物理量に修正すること
-float MAX_VELOCITY;
-float MAX_ANGULAR_VELOCITY;
-float MAX_ACCELERATION;
-float MAX_ANGULAR_ACCELERATION;
-float VELOCITY_RESOLUTION;
-float ANGULAR_VELOCITY_RESOLUTION;
-const float INTERVAL = 0.100;
-float SIMULATE_TIME;
-const float LASER_RESOLUTION = 0.00436332312;//[rad]
-float RATIO;
-float LIMIT_DISTANCE;
-float ROBOT_RADIUS;
-float GOAL_XY_TOLERANCE;
-float GOAL_YAW_TOLERANCE;
+double MAX_VELOCITY;
+double MIN_VELOCITY;
+double MAX_ANGULAR_VELOCITY;
+double MAX_ACCELERATION;
+double MAX_ANGULAR_ACCELERATION;
+double VELOCITY_RESOLUTION;
+double ANGULAR_VELOCITY_RESOLUTION;
+const double INTERVAL = 0.100;
+double SIMULATE_TIME;
+const double LASER_RESOLUTION = 0.00436332312;//[rad]
+double RATIO;
+double LIMIT_DISTANCE;
+double ROBOT_RADIUS;
+double GOAL_XY_TOLERANCE;
+double GOAL_YAW_TOLERANCE;
 
 //評価関数の係数
-float ALPHA = 0;//heading
-float BETA = 0;//distance
-float GAMMA = 0;//velocity
+double ALPHA = 0;//heading
+double BETA = 0;//distance
+double GAMMA = 0;//velocity
 
 //DynamicWindowの辺
-float window_left = -MAX_ANGULAR_VELOCITY;
-float window_up = MAX_VELOCITY;
-float window_right = MAX_ANGULAR_VELOCITY;
-float window_down = 0;
+double window_left = -MAX_ANGULAR_VELOCITY;
+double window_up = MAX_VELOCITY;
+double window_right = MAX_ANGULAR_VELOCITY;
+double window_down = 0;
 
 //subscribe用
 nav_msgs::Odometry previous_odometry;
@@ -49,19 +50,19 @@ sensor_msgs::LaserScan laser_data;
 sensor_msgs::LaserScan _laser_data;//計算用
 bool odometry_subscribed = false;
 bool target_subscribed = false;
-bool move_allowed = true;
+bool move_allowed = false;
 
 geometry_msgs::PoseArray poses;
 
 void evaluate(geometry_msgs::Twist&);
-float calcurate_heading(float, float, geometry_msgs::Pose&);
-float calcurate_distance(float, float, geometry_msgs::Pose&);
-float calcurate_velocity(float);
+double calcurate_heading(double, double, geometry_msgs::Pose&);
+double calcurate_distance(double, double, geometry_msgs::Pose&);
+double calcurate_velocity(double);
 void calcurate_dynamic_window(void);
 
-float get_larger(float, float);
-float get_smaller(float, float);
-float get_yaw(geometry_msgs::Quaternion);
+double get_larger(double, double);
+double get_smaller(double, double);
+double get_yaw(geometry_msgs::Quaternion);
 
 void target_callback(const geometry_msgs::PoseStampedConstPtr& msg)
 {
@@ -89,6 +90,7 @@ int main(int argc, char** argv)
     local_nh.getParam("BETA", BETA);
     local_nh.getParam("GAMMA", GAMMA);
     local_nh.getParam("MAX_VELOCITY", MAX_VELOCITY);
+    local_nh.getParam("MIN_VELOCITY", MIN_VELOCITY);
     local_nh.getParam("MAX_ANGULAR_VELOCITY", MAX_ANGULAR_VELOCITY);
     local_nh.getParam("MAX_ACCELERATION", MAX_ACCELERATION);
     local_nh.getParam("MAX_ANGULAR_ACCELERATION", MAX_ANGULAR_ACCELERATION);
@@ -152,7 +154,7 @@ int main(int argc, char** argv)
         evaluate(velocity.twist);
 
         //calculate local path
-        float dt = 0.01;
+        double dt = 0.01;
         nav_msgs::Path local_path;
         local_path.header.frame_id = "odom";
         geometry_msgs::PoseStamped pose;
@@ -160,7 +162,7 @@ int main(int argc, char** argv)
         local_path.poses.push_back(pose);
         geometry_msgs::PoseStamped _pose;
         _pose.header.frame_id = "base_link";
-        for(float t=0;t<SIMULATE_TIME;t+=dt){
+        for(double t=0;t<SIMULATE_TIME;t+=dt){
            _pose.pose.position.x += velocity.twist.linear.x * cos(velocity.twist.angular.z * t) * dt;
            _pose.pose.position.y += velocity.twist.linear.x * sin(velocity.twist.angular.z * t) * dt;
            _pose.pose.orientation.w = 1;
@@ -170,7 +172,7 @@ int main(int argc, char** argv)
         path_pub.publish(local_path);
         poses_pub.publish(poses);
 
-        float distance_to_goal = sqrt(pow(goal.pose.position.x - current_odometry.pose.pose.position.x, 2) + pow(goal.pose.position.y-current_odometry.pose.pose.position.y, 2));
+        double distance_to_goal = sqrt(pow(goal.pose.position.x - current_odometry.pose.pose.position.x, 2) + pow(goal.pose.position.y-current_odometry.pose.pose.position.y, 2));
         std::cout << distance_to_goal << "[m]" << std::endl;
         /*
         velocity.twist.linear.x *= RATIO / MAX_VELOCITY;
@@ -179,7 +181,7 @@ int main(int argc, char** argv)
 
         if(distance_to_goal < GOAL_XY_TOLERANCE){
           velocity.twist.linear.x = 0;
-          float goal_diff = get_yaw(goal.pose.orientation) - get_yaw(current_odometry.pose.pose.orientation);
+          double goal_diff = get_yaw(goal.pose.orientation) - get_yaw(current_odometry.pose.pose.orientation);
           if(fabs(goal_diff) < GOAL_YAW_TOLERANCE){
             velocity.twist.angular.z = 0;
           }else{
@@ -187,6 +189,10 @@ int main(int argc, char** argv)
           }
         }
 
+        if(!move_allowed){
+          velocity.twist.linear.x = 0.0;
+          velocity.twist.angular.z = 0.0;
+        }
         std::cout << "order" << std::endl;
         std::cout << velocity.twist.linear.x << "[m/s], " << velocity.twist.angular.z << "[rad/s]" << std::endl;
         std::cout << "(" << current_odometry.pose.pose.position.x << ", " << current_odometry.pose.pose.position.y << ", " << get_yaw(current_odometry.pose.pose.orientation) << ")" << std::endl;
@@ -203,10 +209,10 @@ int main(int argc, char** argv)
 
 void evaluate(geometry_msgs::Twist& velocity)
 {
-  std::vector<std::vector<float> > e;
+  std::vector<std::vector<double> > e;
   std::vector<std::vector<bool> > allowed;
-  std::vector<std::vector<float> > e_heading;
-  std::vector<std::vector<float> > e_distance;
+  std::vector<std::vector<double> > e_heading;
+  std::vector<std::vector<double> > e_distance;
 
   int elements_v = int((window_up - window_down)/VELOCITY_RESOLUTION);
   int elements_o = int((window_right - window_left)/ANGULAR_VELOCITY_RESOLUTION);
@@ -222,17 +228,17 @@ void evaluate(geometry_msgs::Twist& velocity)
   }
   _laser_data = laser_data;
   poses.poses.clear();
-  float sum_heading = 0;
-  float sum_distance = 0;
+  double sum_heading = 0;
+  double sum_distance = 0;
   for(int v = 0;v < elements_v;v++){
     for(int o = 0;o < elements_o;o++){
-      float _velocity = window_down + v * VELOCITY_RESOLUTION;
-      float _omega = window_left + o * ANGULAR_VELOCITY_RESOLUTION;
+      double _velocity = window_down + v * VELOCITY_RESOLUTION;
+      double _omega = window_left + o * ANGULAR_VELOCITY_RESOLUTION;
       //std::cout << std::setprecision(4) << "(" << _velocity << "," << _omega << ")";
       geometry_msgs::Pose pose;
-      float dt = 0.01;
-      float theta = 0;
-      for(float t=0;t<SIMULATE_TIME;t+=dt){
+      double dt = 0.01;
+      double theta = 0;
+      for(double t=0;t<SIMULATE_TIME;t+=dt){
         pose.position.x += _velocity * cos(_omega * t) * dt;
         pose.position.y += _velocity * sin(_omega * t) * dt;
         theta += _omega * dt;
@@ -260,12 +266,12 @@ void evaluate(geometry_msgs::Twist& velocity)
 
   int j = 0;
   int k = 0;
-  float max = e[j][k];
+  double max = e[j][k];
   for(int v = 0;v < elements_v;v++){
     for(int o = 0;o < elements_o;o++){
       e[v][o] = ALPHA * e_heading[v][o];
       //std::cout << std::setprecision(4) << e[v][o] << " ";
-      float dist_val = BETA *e_distance[v][o];
+      double dist_val = BETA *e_distance[v][o];
       if(dist_val == 0.0){
         allowed[v][o] = false;
       }else{
@@ -288,36 +294,36 @@ void evaluate(geometry_msgs::Twist& velocity)
   //std::cout << std::endl;
 }
 
-float calcurate_heading(float v, float omega, geometry_msgs::Pose& pose)
+double calcurate_heading(double v, double omega, geometry_msgs::Pose& pose)
 {
-  float _x = pose.position.x;
-  float _y = pose.position.y;
-  float _theta = get_yaw(pose.orientation);
-  float current_theta = get_yaw(current_odometry.pose.pose.orientation);
-  float __x = _x * cos(current_theta) - _y * sin(current_theta) + current_odometry.pose.pose.position.x;
-  float __y = _x * sin(current_theta) + _y * cos(current_theta) + current_odometry.pose.pose.position.y;
+  double _x = pose.position.x;
+  double _y = pose.position.y;
+  double _theta = get_yaw(pose.orientation);
+  double current_theta = get_yaw(current_odometry.pose.pose.orientation);
+  double __x = _x * cos(current_theta) - _y * sin(current_theta) + current_odometry.pose.pose.position.x;
+  double __y = _x * sin(current_theta) + _y * cos(current_theta) + current_odometry.pose.pose.position.y;
   _theta += current_theta;
-  float distance = sqrt(pow(__x - goal.pose.position.x, 2) + pow(__y - goal.pose.position.y, 2));
+  double distance = sqrt(pow(__x - goal.pose.position.x, 2) + pow(__y - goal.pose.position.y, 2));
   //std::cout << std::setprecision(4) << distance << " ";
-  float dtheta = fabs(get_yaw(goal.pose.orientation) - _theta);
-  float val2 = exp(-dtheta);
-  float val = exp(-distance);
+  double dtheta = fabs(get_yaw(goal.pose.orientation) - _theta);
+  double val2 = exp(-dtheta);
+  double val = exp(-distance);
   //std::cout << distance << " ";
   return val;//+ val2;
 }
 
-float calcurate_distance(float v, float omega, geometry_msgs::Pose& pose)
+double calcurate_distance(double v, double omega, geometry_msgs::Pose& pose)
 {
   geometry_msgs::Pose2D object;
 
   int index = 0;
 
-  float distance = LIMIT_DISTANCE;
+  double distance = LIMIT_DISTANCE;
   for(int i=20;i<=700;i+=8){//5~175
     if(_laser_data.ranges[i] < LIMIT_DISTANCE){
       object.x = _laser_data.ranges[i] * sin(LASER_RESOLUTION * i);
       object.y = _laser_data.ranges[i] * cos(LASER_RESOLUTION * i) * -1.0;
-      float _distance = sqrt(pow((object.x - pose.position.x), 2) + pow((object.y - pose.position.y), 2));
+      double _distance = sqrt(pow((object.x - pose.position.x), 2) + pow((object.y - pose.position.y), 2));
       if(_distance < distance){
         //std::cout << "obj" << object << "pos" << position << std::endl;
         index = i;
@@ -335,7 +341,7 @@ float calcurate_distance(float v, float omega, geometry_msgs::Pose& pose)
   return distance;
 }
 
-float calcurate_velocity(float v)
+double calcurate_velocity(double v)
 {
   //std::cout << v << " ";
   return v;
@@ -346,7 +352,7 @@ void calcurate_dynamic_window(void)
   window_left = get_larger(-MAX_ANGULAR_VELOCITY, velocity_odometry.angular.z-MAX_ANGULAR_ACCELERATION*INTERVAL);
   window_up = get_smaller(MAX_VELOCITY, velocity_odometry.linear.x+MAX_ACCELERATION*INTERVAL);
   window_right = get_smaller(MAX_ANGULAR_VELOCITY, velocity_odometry.angular.z+MAX_ANGULAR_ACCELERATION*INTERVAL);
-  window_down = get_larger(0, velocity_odometry.linear.x-MAX_ACCELERATION*INTERVAL);
+  window_down = get_larger(MIN_VELOCITY, velocity_odometry.linear.x-MAX_ACCELERATION*INTERVAL);
 
   if(window_left > window_right){
     window_left = -MAX_ANGULAR_VELOCITY;
@@ -354,11 +360,11 @@ void calcurate_dynamic_window(void)
   }
   if(window_down > window_up){
     window_up = MAX_VELOCITY;
-    window_down = 0;
+    window_down = MIN_VELOCITY;
   }
 }
 
-float get_larger(float a, float b)
+double get_larger(double a, double b)
 {
   if(a > b){
     return a;
@@ -367,7 +373,7 @@ float get_larger(float a, float b)
   }
 }
 
-float get_smaller(float a, float b)
+double get_smaller(double a, double b)
 {
   if(a < b){
     return a;
@@ -376,7 +382,7 @@ float get_smaller(float a, float b)
   }
 }
 
-float get_yaw(geometry_msgs::Quaternion q)
+double get_yaw(geometry_msgs::Quaternion q)
 {
   double r, p, y;
   tf::Quaternion quat(q.x, q.y, q.z, q.w);
