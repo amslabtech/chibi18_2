@@ -2,7 +2,7 @@
   <arg name="START_X" default="0.0"/>
   <arg name="START_Y" default="0.0"/>
   <arg name="WAYPOINT_DISTANCE" default="3.0"/>
-  <arg name="MARGIN_WALL" default="0.3"/>
+  <arg name="MARGIN_WALL" default="0.6"/>
   <arg name="TOLERANCE" default="0.001"/>
   <arg name="WEIGHT_DATA" default="0.3"/>
   <arg name="WEIGHT_SMOOTH" default="0.2"/>

@@ -40,6 +40,7 @@ public:
   int sum;
   int parent_index;
   bool is_wall;
+
 };
 
 class GlobalPathPlanner
@@ -92,7 +93,7 @@ void GlobalPathPlanner::map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
   cost_map.info = map.info;
   cost_map.data.resize(map.info.height*map.info.width);
 
-  int MARGIN_WALL_STEP = 127 / (MARGIN_WALL / map.info.resolution);
+  int MARGIN_WALL_STEP = 254 / (MARGIN_WALL / map.info.resolution);
   std::cout << "MARGIN_WALL_STEP:" << MARGIN_WALL_STEP << std::endl;
 
   std::vector<int> wall_list;
@@ -116,7 +117,7 @@ void GlobalPathPlanner::map_callback(const nav_msgs::OccupancyGridConstPtr& msg)
       break;
     }
     if(cost < MARGIN_WALL_STEP){
-      std::cout << "end" << cost << std::endl;
+     std::cout << "end" << cost << std::endl;
       break;
     }
     int _i = wall_list[i] % map.info.width;
