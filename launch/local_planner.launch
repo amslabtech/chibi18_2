@@ -10,7 +10,7 @@
   <arg name="MAX_ANGULAR_ACCELERATION" default="6.0"/>
   <arg name="VELOCITY_RESOLUTION" default="0.10"/>
   <arg name="ANGULAR_VELOCITY_RESOLUTION" default="0.10"/>
-  <arg name="SIMULATE_TIME" default="1.500"/>
+  <arg name="SIMULATE_TIME" default="2.000"/>
   <arg name="RATIO" default="0.40"/>
   <arg name="LIMIT_DISTANCE" default="2.0"/>
   <arg name="ROBOT_RADIUS" default="0.25"/>
